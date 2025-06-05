@@ -1,0 +1,9 @@
+{
+  "name": "sei-control",
+  "version": "1.0.0",
+  "description": "Sistema de Controle de Documentos SEI",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server -p 8080"
+  }
+}
