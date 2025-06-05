@@ -3,7 +3,8 @@ const auth = {
     
     async login(email, password) {
         try {
-            await firebase.auth().signInWithEmailAndPassword(email, password);
+            const result = await firebase.auth().signInWithEmailAndPassword(email, password);
+            this.currentUser = result.user;
             window.location.href = '/';
         } catch (error) {
             alert('Erro no login: ' + error.message);
@@ -12,16 +13,9 @@ const auth = {
     
     logout() {
         firebase.auth().signOut();
-        window.location.href = '/login.html';
     },
     
-    checkAuth() {
-        firebase.auth().onAuthStateChanged((user) => {
-            if (user) {
-                this.currentUser = user;
-            } else {
-                window.location.href = '/login.html';
-            }
-        });
+    isAuthenticated() {
+        return firebase.auth().currentUser !== null;
     }
 };
