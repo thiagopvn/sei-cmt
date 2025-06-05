@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEI Control - Sistema de Controle de Documentos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="src/styles/main.css">
+</head>
+<body class="bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 min-h-screen text-white">
+    <div id="loadingScreen" class="min-h-screen flex items-center justify-center">
+        <div class="text-center">
+            <i class="fas fa-spinner fa-spin text-4xl text-blue-400 mb-4"></i>
+            <p class="text-gray-300">Carregando sistema...</p>
+        </div>
+    </div>
+
+    <div id="mainApp" class="hidden">
+        <nav class="glass-effect px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+            <div class="flex items-center space-x-4">
+                <i class="fas fa-file-shield text-3xl text-blue-400"></i>
+                <h1 class="text-2xl font-bold">SEI Control</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-300 hidden md:block">
+                    <i class="fas fa-user mr-2"></i><span id="userEmail"></span>
+                </span>
+                <button onclick="app.showDashboard()" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/10 transition">
+                    <i class="fas fa-chart-line mr-2"></i><span class="hidden md:inline">Dashboard</span>
+                </button>
+                <button onclick="app.showDocuments()" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/10 transition">
+                    <i class="fas fa-folder mr-2"></i><span class="hidden md:inline">Documentos</span>
+                </button>
+                <button onclick="app.showNewDocument()" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/10 transition">
+                    <i class="fas fa-plus-circle mr-2"></i><span class="hidden md:inline">Novo</span>
+                </button>
+                <button onclick="app.logout()" class="px-4 py-2 bg-red-500/20 rounded-lg hover:bg-red-500/30 transition">
+                    <i class="fas fa-sign-out-alt mr-2"></i><span class="hidden md:inline">Sair</span>
+                </button>
+            </div>
+        </nav>
+
+        <div id="app-content" class="animate-fade-in"></div>
+    </div>
+
+    <div id="modal-container"></div>
+
+    <script src="src/config/firebase.js"></script>
+    <script src="src/auth/auth.js"></script>
+    <script src="src/utils/helpers.js"></script>
+    <script src="src/components/dashboard.js"></script>
+    <script src="src/components/documents.js"></script>
+    <script src="src/components/modal.js"></script>
+    <script>
+        const app = {
+            currentView: 'dashboard',
+            currentUser: null,
+            
+            init() {
+                firebase.auth().onAuthStateChanged((user) => {
+                    if (user) {
+                        this.currentUser = user;
+                        auth.currentUser = user;
+                        document.getElementById('userEmail').textContent = user.email;
+                        document.getElementById('loadingScreen').classList.add('hidden');
+                        document.getElementById('mainApp').classList.remove('hidden');
+                        this.showDashboard();
+                    } else {
+                        window.location.href = '/login.html';
+                    }
+                });
+            },
+            
+            showDashboard() {
+                this.currentView = 'dashboard';
+                this.updateActiveNav();
+                document.getElementById('app-content').innerHTML = dashboard.render();
+                dashboard.load();
+            },
+            
+            showDocuments() {
+                this.currentView = 'documents';
+                this.updateActiveNav();
+                document.getElementById('app-content').innerHTML = documents.render();
+                documents.load();
+            },
+            
+            showNewDocument() {
+                this.currentView = 'new';
+                this.updateActiveNav();
+                document.getElementById('app-content').innerHTML = documents.renderForm();
+            },
+            
+            updateActiveNav() {
+                const buttons = document.querySelectorAll('.nav-btn');
+                buttons.forEach(btn => btn.classList.remove('bg-white/10'));
+                
+                if (this.currentView === 'dashboard') {
+                    buttons[0].classList.add('bg-white/10');
+                } else if (this.currentView === 'documents') {
+                    buttons[1].classList.add('bg-white/10');
+                } else if (this.currentView === 'new') {
+                    buttons[2].classList.add('bg-white/10');
+                }
+            },
+            
+            logout() {
+                if (confirm('Deseja realmente sair?')) {
+                    firebase.auth().signOut().then(() => {
+                        window.location.href = '/login.html';
+                    });
+                }
+            }
+        };
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'd':
+                        e.preventDefault();
+                        app.showDashboard();
+                        break;
+                    case 'l':
+                        e.preventDefault();
+                        app.showDocuments();
+                        break;
+                    case 'n':
+                        e.preventDefault();
+                        app.showNewDocument();
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
