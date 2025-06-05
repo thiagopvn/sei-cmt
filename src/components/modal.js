@@ -40,6 +40,10 @@ const modal = {
                                 <p class="text-lg">${doc.responsible}</p>
                             </div>
                             <div>
+                                <p class="text-sm text-gray-400">Seção Responsável</p>
+                                <p class="text-lg">${doc.section || 'Não informada'}</p>
+                            </div>
+                            <div>
                                 <p class="text-sm text-gray-400">Cadastrado por</p>
                                 <p class="text-lg">${doc.createdBy || 'Sistema'}</p>
                             </div>

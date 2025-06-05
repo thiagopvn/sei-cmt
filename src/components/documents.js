@@ -2,6 +2,7 @@ const documents = {
     data: [],
     origins: ['CHGAB', 'CBA-I', 'OUVI', 'GOCG', 'DGST', 'ARQDGP'],
     responsibles: ['CB Paulo', 'TC Bonelá'],
+    sections: ['SAD', 'SOP', 'AIOP', 'SST', 'SSMT'],
     
     render() {
         return `
@@ -32,6 +33,7 @@ const documents = {
                                 <th class="px-6 py-3 text-left">Assunto</th>
                                 <th class="px-6 py-3 text-left">Origem</th>
                                 <th class="px-6 py-3 text-left">Responsável</th>
+                                <th class="px-6 py-3 text-left">Seção</th>
                                 <th class="px-6 py-3 text-left">Status</th>
                                 <th class="px-6 py-3 text-left">Tramitações</th>
                                 <th class="px-6 py-3 text-left">Ações</th>
@@ -47,6 +49,7 @@ const documents = {
     renderForm() {
         this.loadOrigins();
         this.loadResponsibles();
+        this.loadSections();
         return `
             <div class="p-6">
                 <h2 class="text-3xl font-bold mb-6">Novo SEI</h2>
@@ -104,6 +107,23 @@ const documents = {
                         <label class="block text-sm font-medium mb-2">Assunto</label>
                         <input type="text" id="subject" required placeholder="Digite o assunto do documento"
                                class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-400">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Seção Responsável</label>
+                        <div class="flex space-x-2">
+                            <select id="section" required
+                                    class="flex-1 px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-400">
+                                <option value="">Selecione...</option>
+                                ${this.sections.map(section => `<option value="${section}">${section}</option>`).join('')}
+                                <option value="_new_">+ Nova seção...</option>
+                            </select>
+                            <button type="button" onclick="documents.manageSections()" 
+                                    class="px-4 py-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition"
+                                    title="Gerenciar seções">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="border-t border-gray-700 pt-6">
@@ -183,6 +203,25 @@ const documents = {
         }
     },
     
+    async loadSections() {
+        try {
+            const snapshot = await db.collection('sections').orderBy('name').get();
+            const customSections = snapshot.docs.map(doc => doc.data().name);
+            this.sections = ['SAD', 'SOP', 'AIOP', 'SST', 'SSMT', ...customSections];
+            
+            const sectionSelect = document.getElementById('section');
+            if (sectionSelect) {
+                sectionSelect.addEventListener('change', (e) => {
+                    if (e.target.value === '_new_') {
+                        this.addNewSection();
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading sections:', error);
+        }
+    },
+    
     async addNewOrigin() {
         const newOrigin = await customModals.showPrompt('Digite a nova sigla de origem:', 'Ex: DGAB, SECT, etc.');
         if (newOrigin && newOrigin.trim()) {
@@ -249,6 +288,41 @@ const documents = {
                 customModals.showAlert('Responsável adicionado com sucesso!', 'success');
             } catch (error) {
                 customModals.showAlert('Erro ao adicionar responsável: ' + error.message, 'error');
+            }
+        }
+    },
+    
+    async addNewSection() {
+        const newSection = await customModals.showPrompt('Digite a nova sigla da seção:', 'Ex: DAG, DGAF, etc.');
+        if (newSection && newSection.trim()) {
+            const section = newSection.trim().toUpperCase();
+            
+            if (this.sections.includes(section)) {
+                customModals.showAlert('Esta seção já existe!', 'warning');
+                return;
+            }
+            
+            try {
+                await db.collection('sections').add({
+                    name: section,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdBy: authManager.currentUser.email
+                });
+                
+                this.sections.push(section);
+                this.sections.sort();
+                
+                const sectionSelect = document.getElementById('section');
+                sectionSelect.innerHTML = `
+                    <option value="">Selecione...</option>
+                    ${this.sections.map(s => `<option value="${s}">${s}</option>`).join('')}
+                    <option value="_new_">+ Nova seção...</option>
+                `;
+                sectionSelect.value = section;
+                
+                customModals.showAlert('Seção adicionada com sucesso!', 'success');
+            } catch (error) {
+                customModals.showAlert('Erro ao adicionar seção: ' + error.message, 'error');
             }
         }
     },
@@ -335,6 +409,47 @@ const documents = {
         document.getElementById('modal-container').innerHTML = modalHTML;
     },
     
+    manageSections() {
+        const modalHTML = `
+            <div class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onclick="modal.close(event)">
+                <div class="glass-effect rounded-2xl p-6 w-full max-w-md animate-fade-in" onclick="event.stopPropagation()">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold">Gerenciar Seções</h3>
+                        <button onclick="modal.close()" class="text-gray-400 hover:text-white">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-2 max-h-96 overflow-y-auto">
+                        ${this.sections.map(section => {
+                            const isDefault = ['SAD', 'SOP', 'AIOP', 'SST', 'SSMT'].includes(section);
+                            return `
+                                <div class="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                                    <span class="${isDefault ? 'text-gray-400' : ''}">${section}</span>
+                                    ${!isDefault ? `
+                                        <button onclick="documents.removeSection('${section}')" 
+                                                class="text-red-400 hover:text-red-300">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    ` : '<span class="text-xs text-gray-500">Padrão</span>'}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button onclick="documents.addNewSectionFromModal()" 
+                                class="w-full px-4 py-2 bg-blue-500/20 rounded-lg hover:bg-blue-500/30 transition">
+                            <i class="fas fa-plus mr-2"></i>Adicionar Nova Seção
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('modal-container').innerHTML = modalHTML;
+    },
+    
     showTramitations(docId) {
         const doc = this.data.find(d => d.id === docId);
         if (!doc) return;
@@ -349,6 +464,7 @@ const documents = {
                         <div>
                             <h3 class="text-2xl font-bold">Tramitações - ${doc.seiNumber}</h3>
                             ${doc.subject ? `<p class="text-sm text-gray-300 mt-1">Assunto: ${doc.subject}</p>` : ''}
+                            ${doc.section ? `<p class="text-sm text-gray-300">Seção Responsável: ${doc.section}</p>` : ''}
                             <p class="text-sm text-gray-400 mt-1">Status atual: <span class="${helpers.getStatusColor(currentStatus)}">${currentStatus}</span></p>
                             <p class="text-sm text-gray-400">Total de tramitações: ${tramitations.length}</p>
                         </div>
@@ -582,6 +698,27 @@ const documents = {
         }
     },
     
+    async removeSection(section) {
+        const confirmed = await customModals.showConfirm(
+            `Remover a seção "${section}"?`,
+            'Remover',
+            'Cancelar',
+            true
+        );
+        
+        if (confirmed) {
+            try {
+                const snapshot = await db.collection('sections').where('name', '==', section).get();
+                snapshot.forEach(doc => doc.ref.delete());
+                
+                this.sections = this.sections.filter(s => s !== section);
+                this.manageSections();
+            } catch (error) {
+                customModals.showAlert('Erro ao remover seção: ' + error.message, 'error');
+            }
+        }
+    },
+    
     async addNewOriginFromModal() {
         modal.close();
         await this.addNewOrigin();
@@ -592,6 +729,12 @@ const documents = {
         modal.close();
         await this.addNewResponsible();
         this.manageResponsibles();
+    },
+    
+    async addNewSectionFromModal() {
+        modal.close();
+        await this.addNewSection();
+        this.manageSections();
     },
     
     async load() {
@@ -617,6 +760,7 @@ const documents = {
                     <td class="px-6 py-4" title="${doc.subject || ''}">${truncatedSubject || '<span class="text-gray-500">-</span>'}</td>
                     <td class="px-6 py-4">${doc.origin}</td>
                     <td class="px-6 py-4">${doc.responsible}</td>
+                    <td class="px-6 py-4">${doc.section || '<span class="text-gray-500">-</span>'}</td>
                     <td class="px-6 py-4">
                         <span class="px-3 py-1 rounded-full text-xs font-semibold ${helpers.getStatusColor(status)}">
                             ${status}
@@ -637,7 +781,7 @@ const documents = {
             `;
         }).join('');
         
-        document.getElementById('documentsTable').innerHTML = tableHTML || '<tr><td colspan="8" class="text-center py-8 text-gray-400">Nenhum documento encontrado</td></tr>';
+        document.getElementById('documentsTable').innerHTML = tableHTML || '<tr><td colspan="9" class="text-center py-8 text-gray-400">Nenhum documento encontrado</td></tr>';
     },
     
     filter() {
@@ -649,7 +793,8 @@ const documents = {
             const matchesSearch = !searchTerm || 
                 doc.seiNumber.toLowerCase().includes(searchTerm) ||
                 doc.responsible.toLowerCase().includes(searchTerm) ||
-                (doc.subject && doc.subject.toLowerCase().includes(searchTerm));
+                (doc.subject && doc.subject.toLowerCase().includes(searchTerm)) ||
+                (doc.section && doc.section.toLowerCase().includes(searchTerm));
             const matchesStatus = !statusFilter || status === statusFilter;
             return matchesSearch && matchesStatus;
         });
@@ -666,6 +811,7 @@ const documents = {
             origin: document.getElementById('origin').value,
             responsible: document.getElementById('responsible').value,
             subject: document.getElementById('subject').value,
+            section: document.getElementById('section').value,
             status: 'Aguardando Envio',
             tramitations: [],
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
