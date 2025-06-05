@@ -52,6 +52,7 @@
     <script src="src/config/firebase.js"></script>
     <script src="src/auth/auth.js"></script>
     <script src="src/utils/helpers.js"></script>
+    <script src="src/components/customModals.js"></script>
     <script src="src/components/dashboard.js"></script>
     <script src="src/components/documents.js"></script>
     <script src="src/components/modal.js"></script>
@@ -146,13 +147,20 @@
                 }
             },
             
-            logout() {
-                if (confirm('Deseja realmente sair?')) {
+            async logout() {
+                const confirmed = await customModals.showConfirm(
+                    'Deseja realmente sair?',
+                    'Sair',
+                    'Cancelar',
+                    false
+                );
+                
+                if (confirmed) {
                     firebase.auth().signOut().then(() => {
                         window.location.href = '/login.html';
                     }).catch((error) => {
                         console.error('Erro ao fazer logout:', error);
-                        alert('Erro ao sair. Por favor, tente novamente.');
+                        customModals.showAlert('Erro ao sair. Por favor, tente novamente.', 'error');
                     });
                 }
             }

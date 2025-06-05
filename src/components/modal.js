@@ -3,6 +3,8 @@ const modal = {
         const doc = documents.data.find(d => d.id === docId);
         if (!doc) return;
         
+        const status = documents.getDocumentStatus(doc);
+        
         const modalHTML = `
             <div class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onclick="modal.close(event)">
                 <div class="glass-effect rounded-2xl p-6 w-full max-w-2xl animate-fade-in" onclick="event.stopPropagation()">
@@ -21,8 +23,8 @@ const modal = {
                             </div>
                             <div>
                                 <p class="text-sm text-gray-400">Status</p>
-                                <span class="px-3 py-1 rounded-full text-sm font-semibold ${helpers.getStatusColor(doc.status)}">
-                                    ${doc.status}
+                                <span class="px-3 py-1 rounded-full text-sm font-semibold ${helpers.getStatusColor(status)}">
+                                    ${status}
                                 </span>
                             </div>
                             <div>
@@ -42,6 +44,13 @@ const modal = {
                                 <p class="text-lg">${doc.createdBy || 'Sistema'}</p>
                             </div>
                         </div>
+                        
+                        ${doc.subject ? `
+                            <div class="mt-4 p-4 bg-gray-800/30 rounded-lg">
+                                <p class="text-sm text-gray-400 mb-1">Assunto</p>
+                                <p class="text-lg font-medium">${doc.subject}</p>
+                            </div>
+                        ` : ''}
                         
                         <div class="mt-6 pt-6 border-t border-gray-700">
                             <a href="https://sei.fazenda.rj.gov.br" target="_blank" 

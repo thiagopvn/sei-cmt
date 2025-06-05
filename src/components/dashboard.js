@@ -19,9 +19,9 @@ const dashboard = {
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-gray-400 text-sm">Em Andamento</p>
-                                <p class="text-3xl font-bold text-yellow-400" id="inProgress">0</p>
+                                <p class="text-3xl font-bold text-blue-400" id="inProgress">0</p>
                             </div>
-                            <i class="fas fa-clock text-4xl text-yellow-400 opacity-50"></i>
+                            <i class="fas fa-clock text-4xl text-blue-400 opacity-50"></i>
                         </div>
                     </div>
                     
@@ -62,8 +62,27 @@ const dashboard = {
             const today = new Date().toISOString().split('T')[0];
             
             document.getElementById('totalDocs').textContent = docs.length;
-            document.getElementById('inProgress').textContent = docs.filter(d => d.status === 'Em Andamento').length;
-            document.getElementById('completed').textContent = docs.filter(d => d.status === 'Finalizado').length;
+            
+            const getStatus = (doc) => {
+                if (doc.status === 'Finalizado') return 'Finalizado';
+                const tramitations = doc.tramitations || [];
+                if (tramitations.length === 0) return 'Aguardando Envio';
+                const lastTramitation = tramitations[tramitations.length - 1];
+                return lastTramitation.type === 'envio' ? 'Enviado' : 'Respondido';
+            };
+            
+            const inProgressCount = docs.filter(d => {
+                const status = getStatus(d);
+                return status === 'Aguardando Envio' || status === 'Enviado' || status === 'Respondido';
+            }).length;
+            
+            const completedCount = docs.filter(d => {
+                const status = getStatus(d);
+                return status === 'Finalizado';
+            }).length;
+            
+            document.getElementById('inProgress').textContent = inProgressCount;
+            document.getElementById('completed').textContent = completedCount;
             document.getElementById('today').textContent = docs.filter(d => d.date === today).length;
             
             const recentHTML = docs.slice(0, 5).map(doc => `
@@ -73,6 +92,7 @@ const dashboard = {
                         <div>
                             <p class="font-semibold">${doc.seiNumber}</p>
                             <p class="text-sm text-gray-400">${doc.origin} - ${doc.responsible}</p>
+                            ${doc.subject ? `<p class="text-xs text-gray-500 mt-1">${doc.subject.substring(0, 50)}${doc.subject.length > 50 ? '...' : ''}</p>` : ''}
                         </div>
                     </div>
                     <span class="text-sm text-gray-400">${helpers.formatDate(doc.date)}</span>

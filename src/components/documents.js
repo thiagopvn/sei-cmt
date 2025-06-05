@@ -9,7 +9,7 @@ const documents = {
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-3xl font-bold">Documentos SEI</h2>
                     <div class="flex space-x-4">
-                        <input type="text" id="searchInput" placeholder="Buscar SEI..."
+                        <input type="text" id="searchInput" placeholder="Buscar SEI, responsável ou assunto..."
                                class="px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg w-64 focus:outline-none focus:border-blue-400"
                                onkeyup="documents.filter()">
                         <select id="statusFilter" onchange="documents.filter()"
@@ -29,6 +29,7 @@ const documents = {
                             <tr>
                                 <th class="px-6 py-3 text-left">Nº SEI</th>
                                 <th class="px-6 py-3 text-left">Data</th>
+                                <th class="px-6 py-3 text-left">Assunto</th>
                                 <th class="px-6 py-3 text-left">Origem</th>
                                 <th class="px-6 py-3 text-left">Responsável</th>
                                 <th class="px-6 py-3 text-left">Status</th>
@@ -97,6 +98,12 @@ const documents = {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Assunto</label>
+                        <input type="text" id="subject" required placeholder="Digite o assunto do documento"
+                               class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-400">
                     </div>
                     
                     <div class="border-t border-gray-700 pt-6">
@@ -177,12 +184,12 @@ const documents = {
     },
     
     async addNewOrigin() {
-        const newOrigin = prompt('Digite a nova sigla de origem:');
+        const newOrigin = await customModals.showPrompt('Digite a nova sigla de origem:', 'Ex: DGAB, SECT, etc.');
         if (newOrigin && newOrigin.trim()) {
             const origin = newOrigin.trim().toUpperCase();
             
             if (this.origins.includes(origin)) {
-                alert('Esta origem já existe!');
+                customModals.showAlert('Esta origem já existe!', 'warning');
                 return;
             }
             
@@ -204,20 +211,20 @@ const documents = {
                 `;
                 originSelect.value = origin;
                 
-                alert('Origem adicionada com sucesso!');
+                customModals.showAlert('Origem adicionada com sucesso!', 'success');
             } catch (error) {
-                alert('Erro ao adicionar origem: ' + error.message);
+                customModals.showAlert('Erro ao adicionar origem: ' + error.message, 'error');
             }
         }
     },
     
     async addNewResponsible() {
-        const newResponsible = prompt('Digite o nome do novo responsável:');
+        const newResponsible = await customModals.showPrompt('Digite o nome do novo responsável:', 'Ex: TC Silva, CB Santos, etc.');
         if (newResponsible && newResponsible.trim()) {
             const responsible = newResponsible.trim();
             
             if (this.responsibles.includes(responsible)) {
-                alert('Este responsável já existe!');
+                customModals.showAlert('Este responsável já existe!', 'warning');
                 return;
             }
             
@@ -239,9 +246,9 @@ const documents = {
                 `;
                 responsibleSelect.value = responsible;
                 
-                alert('Responsável adicionado com sucesso!');
+                customModals.showAlert('Responsável adicionado com sucesso!', 'success');
             } catch (error) {
-                alert('Erro ao adicionar responsável: ' + error.message);
+                customModals.showAlert('Erro ao adicionar responsável: ' + error.message, 'error');
             }
         }
     },
@@ -341,6 +348,7 @@ const documents = {
                     <div class="flex justify-between items-center mb-6">
                         <div>
                             <h3 class="text-2xl font-bold">Tramitações - ${doc.seiNumber}</h3>
+                            ${doc.subject ? `<p class="text-sm text-gray-300 mt-1">Assunto: ${doc.subject}</p>` : ''}
                             <p class="text-sm text-gray-400 mt-1">Status atual: <span class="${helpers.getStatusColor(currentStatus)}">${currentStatus}</span></p>
                             <p class="text-sm text-gray-400">Total de tramitações: ${tramitations.length}</p>
                         </div>
@@ -469,7 +477,7 @@ const documents = {
         const observation = document.getElementById('tramitationObservation').value;
         
         if (!type) {
-            alert('Este documento já está finalizado!');
+            customModals.showAlert('Este documento já está finalizado!', 'warning');
             return;
         }
         
@@ -489,16 +497,23 @@ const documents = {
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
             });
             
-            alert('Tramitação registrada com sucesso!');
+            customModals.showAlert('Tramitação registrada com sucesso!', 'success');
             await this.load();
             this.showTramitations(docId);
         } catch (error) {
-            alert('Erro ao registrar tramitação: ' + error.message);
+            customModals.showAlert('Erro ao registrar tramitação: ' + error.message, 'error');
         }
     },
     
     async finalizeSEI(docId) {
-        if (confirm('Tem certeza que deseja finalizar este SEI? Esta ação não pode ser desfeita.')) {
+        const confirmed = await customModals.showConfirm(
+            'Tem certeza que deseja finalizar este SEI? Esta ação não pode ser desfeita.',
+            'Finalizar SEI',
+            'Cancelar',
+            false
+        );
+        
+        if (confirmed) {
             try {
                 await db.collection('seis').doc(docId).update({
                     status: 'Finalizado',
@@ -506,11 +521,11 @@ const documents = {
                     finalizedBy: authManager.currentUser.email
                 });
                 
-                alert('SEI finalizado com sucesso!');
+                customModals.showAlert('SEI finalizado com sucesso!', 'success');
                 await this.load();
                 modal.close();
             } catch (error) {
-                alert('Erro ao finalizar SEI: ' + error.message);
+                customModals.showAlert('Erro ao finalizar SEI: ' + error.message, 'error');
             }
         }
     },
@@ -526,7 +541,14 @@ const documents = {
     },
     
     async removeOrigin(origin) {
-        if (confirm(`Remover a origem "${origin}"?`)) {
+        const confirmed = await customModals.showConfirm(
+            `Remover a origem "${origin}"?`,
+            'Remover',
+            'Cancelar',
+            true
+        );
+        
+        if (confirmed) {
             try {
                 const snapshot = await db.collection('origins').where('name', '==', origin).get();
                 snapshot.forEach(doc => doc.ref.delete());
@@ -534,13 +556,20 @@ const documents = {
                 this.origins = this.origins.filter(o => o !== origin);
                 this.manageOrigins();
             } catch (error) {
-                alert('Erro ao remover origem: ' + error.message);
+                customModals.showAlert('Erro ao remover origem: ' + error.message, 'error');
             }
         }
     },
     
     async removeResponsible(responsible) {
-        if (confirm(`Remover o responsável "${responsible}"?`)) {
+        const confirmed = await customModals.showConfirm(
+            `Remover o responsável "${responsible}"?`,
+            'Remover',
+            'Cancelar',
+            true
+        );
+        
+        if (confirmed) {
             try {
                 const snapshot = await db.collection('responsibles').where('name', '==', responsible).get();
                 snapshot.forEach(doc => doc.ref.delete());
@@ -548,7 +577,7 @@ const documents = {
                 this.responsibles = this.responsibles.filter(r => r !== responsible);
                 this.manageResponsibles();
             } catch (error) {
-                alert('Erro ao remover responsável: ' + error.message);
+                customModals.showAlert('Erro ao remover responsável: ' + error.message, 'error');
             }
         }
     },
@@ -579,11 +608,13 @@ const documents = {
         const tableHTML = docs.map(doc => {
             const status = this.getDocumentStatus(doc);
             const tramitationsCount = (doc.tramitations || []).length;
+            const truncatedSubject = doc.subject ? (doc.subject.length > 30 ? doc.subject.substring(0, 30) + '...' : doc.subject) : '';
             
             return `
                 <tr class="hover:bg-gray-800/30 transition">
                     <td class="px-6 py-4 cursor-pointer text-blue-400 hover:text-blue-300" onclick="modal.show('${doc.id}')">${doc.seiNumber}</td>
                     <td class="px-6 py-4">${helpers.formatDate(doc.date)}</td>
+                    <td class="px-6 py-4" title="${doc.subject || ''}">${truncatedSubject || '<span class="text-gray-500">-</span>'}</td>
                     <td class="px-6 py-4">${doc.origin}</td>
                     <td class="px-6 py-4">${doc.responsible}</td>
                     <td class="px-6 py-4">
@@ -606,7 +637,7 @@ const documents = {
             `;
         }).join('');
         
-        document.getElementById('documentsTable').innerHTML = tableHTML || '<tr><td colspan="7" class="text-center py-8 text-gray-400">Nenhum documento encontrado</td></tr>';
+        document.getElementById('documentsTable').innerHTML = tableHTML || '<tr><td colspan="8" class="text-center py-8 text-gray-400">Nenhum documento encontrado</td></tr>';
     },
     
     filter() {
@@ -617,7 +648,8 @@ const documents = {
             const status = this.getDocumentStatus(doc);
             const matchesSearch = !searchTerm || 
                 doc.seiNumber.toLowerCase().includes(searchTerm) ||
-                doc.responsible.toLowerCase().includes(searchTerm);
+                doc.responsible.toLowerCase().includes(searchTerm) ||
+                (doc.subject && doc.subject.toLowerCase().includes(searchTerm));
             const matchesStatus = !statusFilter || status === statusFilter;
             return matchesSearch && matchesStatus;
         });
@@ -633,6 +665,7 @@ const documents = {
             date: document.getElementById('date').value,
             origin: document.getElementById('origin').value,
             responsible: document.getElementById('responsible').value,
+            subject: document.getElementById('subject').value,
             status: 'Aguardando Envio',
             tramitations: [],
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -657,20 +690,27 @@ const documents = {
         
         try {
             await db.collection('seis').add(data);
-            alert('SEI cadastrado com sucesso!');
+            customModals.showAlert('SEI cadastrado com sucesso!', 'success');
             seiApp.showDocuments();
         } catch (error) {
-            alert('Erro ao salvar: ' + error.message);
+            customModals.showAlert('Erro ao salvar: ' + error.message, 'error');
         }
     },
     
     async delete(id) {
-        if (confirm('Excluir este SEI e todo seu histórico de tramitações?')) {
+        const confirmed = await customModals.showConfirm(
+            'Excluir este SEI e todo seu histórico de tramitações?',
+            'Excluir',
+            'Cancelar',
+            true
+        );
+        
+        if (confirmed) {
             try {
                 await db.collection('seis').doc(id).delete();
                 this.load();
             } catch (error) {
-                alert('Erro ao excluir: ' + error.message);
+                customModals.showAlert('Erro ao excluir: ' + error.message, 'error');
             }
         }
     }
