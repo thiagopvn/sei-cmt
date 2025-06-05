@@ -128,7 +128,7 @@ const documents = {
                                 class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-600 transition transform hover:scale-105">
                             <i class="fas fa-save mr-2"></i>Salvar
                         </button>
-                        <button type="button" onclick="app.showDocuments()"
+                        <button type="button" onclick="seiApp.showDocuments()"
                                 class="px-6 py-3 bg-gray-700 rounded-lg font-semibold hover:bg-gray-600 transition">
                             Cancelar
                         </button>
@@ -480,7 +480,7 @@ const documents = {
             documentNumber,
             observation,
             registeredBy: authManager.currentUser.email,
-            registeredAt: firebase.firestore.FieldValue.serverTimestamp()
+            registeredAt: new Date().toISOString()
         };
         
         try {
@@ -651,14 +651,14 @@ const documents = {
                 documentNumber: firstDocumentNumber,
                 observation: 'Primeira tramitação',
                 registeredBy: authManager.currentUser.email,
-                registeredAt: firebase.firestore.FieldValue.serverTimestamp()
+                registeredAt: new Date().toISOString()
             });
         }
         
         try {
             await db.collection('seis').add(data);
             alert('SEI cadastrado com sucesso!');
-            app.showDocuments();
+            seiApp.showDocuments();
         } catch (error) {
             alert('Erro ao salvar: ' + error.message);
         }
