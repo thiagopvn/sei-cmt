@@ -29,16 +29,16 @@
                 <span class="text-sm text-gray-300 hidden md:block">
                     <i class="fas fa-user mr-2"></i><span id="userEmail"></span>
                 </span>
-                <button onclick="app.showDashboard()" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/10 transition">
+                <button onclick="seiApp.showDashboard()" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/10 transition">
                     <i class="fas fa-chart-line mr-2"></i><span class="hidden md:inline">Dashboard</span>
                 </button>
-                <button onclick="app.showDocuments()" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/10 transition">
+                <button onclick="seiApp.showDocuments()" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/10 transition">
                     <i class="fas fa-folder mr-2"></i><span class="hidden md:inline">Documentos</span>
                 </button>
-                <button onclick="app.showNewDocument()" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/10 transition">
+                <button onclick="seiApp.showNewDocument()" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/10 transition">
                     <i class="fas fa-plus-circle mr-2"></i><span class="hidden md:inline">Novo</span>
                 </button>
-                <button onclick="app.logout()" class="px-4 py-2 bg-red-500/20 rounded-lg hover:bg-red-500/30 transition">
+                <button onclick="seiApp.logout()" class="px-4 py-2 bg-red-500/20 rounded-lg hover:bg-red-500/30 transition">
                     <i class="fas fa-sign-out-alt mr-2"></i><span class="hidden md:inline">Sair</span>
                 </button>
             </div>
@@ -56,15 +56,19 @@
     <script src="src/components/documents.js"></script>
     <script src="src/components/modal.js"></script>
     <script>
-        const app = {
+        const seiApp = {
             currentView: 'dashboard',
             currentUser: null,
+            initialized: false,
             
             init() {
                 firebase.auth().onAuthStateChanged((user) => {
                     if (user) {
                         this.currentUser = user;
-                        auth.currentUser = user;
+                        this.initialized = true;
+                        if (typeof authManager !== 'undefined') {
+                            authManager.currentUser = user;
+                        }
                         document.getElementById('userEmail').textContent = user.email;
                         document.getElementById('loadingScreen').classList.add('hidden');
                         document.getElementById('mainApp').classList.remove('hidden');
@@ -78,33 +82,67 @@
             showDashboard() {
                 this.currentView = 'dashboard';
                 this.updateActiveNav();
-                document.getElementById('app-content').innerHTML = dashboard.render();
-                dashboard.load();
+                if (typeof dashboard !== 'undefined' && dashboard.render) {
+                    document.getElementById('app-content').innerHTML = dashboard.render();
+                    dashboard.load();
+                } else {
+                    console.error('Dashboard module not loaded');
+                    this.showFallbackContent('Dashboard');
+                }
             },
             
             showDocuments() {
                 this.currentView = 'documents';
                 this.updateActiveNav();
-                document.getElementById('app-content').innerHTML = documents.render();
-                documents.load();
+                if (typeof documents !== 'undefined' && documents.render) {
+                    document.getElementById('app-content').innerHTML = documents.render();
+                    documents.load();
+                } else {
+                    console.error('Documents module not loaded');
+                    this.showFallbackContent('Documentos');
+                }
             },
             
             showNewDocument() {
                 this.currentView = 'new';
                 this.updateActiveNav();
-                document.getElementById('app-content').innerHTML = documents.renderForm();
+                if (typeof documents !== 'undefined' && documents.renderForm) {
+                    document.getElementById('app-content').innerHTML = documents.renderForm();
+                } else {
+                    console.error('Documents module not loaded');
+                    this.showFallbackContent('Novo Documento');
+                }
+            },
+            
+            showFallbackContent(sectionName) {
+                document.getElementById('app-content').innerHTML = `
+                    <div class="p-6">
+                        <div class="glass-effect rounded-xl p-8 text-center">
+                            <i class="fas fa-exclamation-triangle text-4xl text-yellow-400 mb-4"></i>
+                            <h2 class="text-2xl font-bold mb-2">Módulo não carregado</h2>
+                            <p class="text-gray-300">O módulo "${sectionName}" não está disponível no momento.</p>
+                            <p class="text-sm text-gray-400 mt-2">Por favor, recarregue a página ou contate o suporte.</p>
+                            <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition">
+                                <i class="fas fa-sync mr-2"></i>Recarregar Página
+                            </button>
+                        </div>
+                    </div>
+                `;
             },
             
             updateActiveNav() {
                 const buttons = document.querySelectorAll('.nav-btn');
                 buttons.forEach(btn => btn.classList.remove('bg-white/10'));
                 
-                if (this.currentView === 'dashboard') {
-                    buttons[0].classList.add('bg-white/10');
-                } else if (this.currentView === 'documents') {
-                    buttons[1].classList.add('bg-white/10');
-                } else if (this.currentView === 'new') {
-                    buttons[2].classList.add('bg-white/10');
+                const buttonIndex = {
+                    'dashboard': 0,
+                    'documents': 1,
+                    'new': 2
+                };
+                
+                const index = buttonIndex[this.currentView];
+                if (index !== undefined && buttons[index]) {
+                    buttons[index].classList.add('bg-white/10');
                 }
             },
             
@@ -112,13 +150,19 @@
                 if (confirm('Deseja realmente sair?')) {
                     firebase.auth().signOut().then(() => {
                         window.location.href = '/login.html';
+                    }).catch((error) => {
+                        console.error('Erro ao fazer logout:', error);
+                        alert('Erro ao sair. Por favor, tente novamente.');
                     });
                 }
             }
         };
         
+        window.seiApp = seiApp;
+        
         window.addEventListener('DOMContentLoaded', () => {
-            app.init();
+            console.log('DOM loaded, initializing app...');
+            seiApp.init();
         });
 
         document.addEventListener('keydown', (e) => {
@@ -126,19 +170,24 @@
                 switch(e.key) {
                     case 'd':
                         e.preventDefault();
-                        app.showDashboard();
+                        seiApp.showDashboard();
                         break;
                     case 'l':
                         e.preventDefault();
-                        app.showDocuments();
+                        seiApp.showDocuments();
                         break;
                     case 'n':
                         e.preventDefault();
-                        app.showNewDocument();
+                        seiApp.showNewDocument();
                         break;
                 }
             }
         });
+
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('Error: ', msg, '\nURL: ', url, '\nLine: ', lineNo, '\nColumn: ', columnNo, '\nError object: ', error);
+            return false;
+        };
     </script>
 </body>
 </html>

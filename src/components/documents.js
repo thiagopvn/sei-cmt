@@ -190,7 +190,7 @@ const documents = {
                 await db.collection('origins').add({
                     name: origin,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    createdBy: auth.currentUser.email
+                    createdBy: authManager.currentUser.email
                 });
                 
                 this.origins.push(origin);
@@ -225,7 +225,7 @@ const documents = {
                 await db.collection('responsibles').add({
                     name: responsible,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    createdBy: auth.currentUser.email
+                    createdBy: authManager.currentUser.email
                 });
                 
                 this.responsibles.push(responsible);
@@ -479,7 +479,7 @@ const documents = {
             date,
             documentNumber,
             observation,
-            registeredBy: auth.currentUser.email,
+            registeredBy: authManager.currentUser.email,
             registeredAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
@@ -503,7 +503,7 @@ const documents = {
                 await db.collection('seis').doc(docId).update({
                     status: 'Finalizado',
                     finalizedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    finalizedBy: auth.currentUser.email
+                    finalizedBy: authManager.currentUser.email
                 });
                 
                 alert('SEI finalizado com sucesso!');
@@ -636,7 +636,7 @@ const documents = {
             status: 'Aguardando Envio',
             tramitations: [],
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            createdBy: auth.currentUser.email
+            createdBy: authManager.currentUser.email
         };
         
         const firstDestination = document.getElementById('firstDestination').value;
@@ -650,7 +650,7 @@ const documents = {
                 date: firstTramitationDate,
                 documentNumber: firstDocumentNumber,
                 observation: 'Primeira tramitação',
-                registeredBy: auth.currentUser.email,
+                registeredBy: authManager.currentUser.email,
                 registeredAt: firebase.firestore.FieldValue.serverTimestamp()
             });
         }

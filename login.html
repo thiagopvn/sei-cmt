@@ -154,13 +154,13 @@
         });
 
         firebase.auth().onAuthStateChanged((user) => {
-            if (user) {
-                showLoading(true);
-                setTimeout(() => {
-                    window.location.href = '/app.html';
-                }, 500);
-            }
-        });
+    if (user) {
+        showLoading(true);
+        setTimeout(() => {
+            window.location.href = '/app.html';
+        }, 500);
+    }
+});
 
         emailInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !passwordInput.value) {
