@@ -1,37 +1,53 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEI Control - Carregando...</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        body {
-            background: linear-gradient(to bottom right, #111827, #1e3a8a, #111827);
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Rotina Geral</title>
+  <meta name="description" content="Agenda, escala de serviços, trocas, finanças, prazos e rotinas em um só app.">
+  <meta name="theme-color" content="#f3f4f6">
+  <meta name="color-scheme" content="light dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Rotina Geral">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/app.css">
+  <script>
+    // Aplica o tema salvo antes de desenhar, para não piscar.
+    try {
+      var t = JSON.parse(localStorage.getItem('pauta:v1') || '{}').settings?.theme;
+      if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
 </head>
-<body class="min-h-screen text-white flex items-center justify-center">
-    <div class="text-center">
-        <i class="fas fa-spinner fa-spin text-4xl text-blue-400 mb-4"></i>
-        <p class="text-gray-300">Verificando autenticação...</p>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Menu">
+      <a class="brand" href="#/inicio"><span class="brand-mark" data-icon="check" data-size="18"></span><span>Rotina Geral</span></a>
+      <button type="button" class="btn btn-primary side-new" data-action="new-menu"><span data-icon="plus" data-size="18"></span>Adicionar</button>
+      <nav class="side-nav" id="side-nav"></nav>
+      <a href="#/ajustes" data-sync hidden></a>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <a class="brand" href="#/inicio"><span class="brand-mark" data-icon="check" data-size="18"></span><span>Rotina Geral</span></a>
+        <div class="topbar-right">
+          <a href="#/ajustes" data-sync hidden></a>
+          <a class="icon-btn" href="#/ajustes" aria-label="Ajustes" data-icon="settings" data-size="22"></a>
+        </div>
+      </header>
+      <main id="view" tabindex="-1"></main>
     </div>
-
-    <script src="src/config/firebase.js"></script>
-    <script>
-        // Não use objetos globais aqui, apenas redirecione
-        firebase.auth().onAuthStateChanged((user) => {
-            setTimeout(() => {
-                if (user) {
-                    window.location.replace('/app.html');
-                } else {
-                    window.location.replace('/login.html');
-                }
-            }, 500);
-        });
-    </script>
+  </div>
+  <nav class="bottom-nav" id="bottom-nav" aria-label="Navegação principal"></nav>
+  <button type="button" class="fab" data-action="new-menu" aria-label="Adicionar" data-icon="plus" data-size="26"></button>
+  <div id="timerbar" hidden></div>
+  <div id="overlay-root"></div>
+  <div id="toast-root" aria-live="polite"></div>
+  <noscript><p style="padding:24px">Ative o JavaScript para usar o Rotina Geral.</p></noscript>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
