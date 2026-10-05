@@ -14,7 +14,7 @@ let tab = 'resumo';
 let kindFilter = '';
 
 const SOURCE_ICON = { entry: 'wallet', service: 'shield', task: 'briefcase', invoice: 'card' };
-const CAT_COLORS = [1, 2, 3, 4, 5, 6, 7, 8];
+const CAT_COLORS = [6, 2, 7, 4, 5, 3, 8, 1];
 
 function itemRow(it, today) {
   const late = !it.settledAt && it.date < today;
@@ -48,7 +48,7 @@ function resumoTab(state, M, sm, today) {
   const exp = [...carry.filter((i) => i.kind === 'despesa'), ...sm.items.filter((i) => i.kind === 'despesa')];
   const sortOpen = (a, b) => (!!a.settledAt - !!b.settledAt) || a.date.localeCompare(b.date);
   const byCat = expensesByCategory(state, M).map((x, i) => ({ label: x.category, value: x.value, color: CAT_COLORS[i % 8] }));
-  const bySrc = incomeBySource(state, M).map((x, i) => ({ label: x.category, value: x.value, color: [6, 1, 7, 3][i % 4] }));
+  const bySrc = incomeBySource(state, M).map((x, i) => ({ label: x.category, value: x.value, color: [6, 7, 3, 2][i % 4] }));
   return `
     <div class="two-col">
       <section class="section">

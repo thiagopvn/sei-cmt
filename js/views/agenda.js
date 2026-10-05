@@ -46,7 +46,7 @@ function cellHtml(state, d, items, today, M) {
   const shift = items.find((i) => i.layer === 'servico');
   const others = items.filter((i) => i.layer !== 'servico');
   const dots = others.slice(0, 4).map((i) => {
-    const color = i.layer === 'financa' ? 6 : state.areas.find((a) => a.id === i.area)?.color || LAYER_COLOR[i.layer];
+    const color = i.layer === 'financa' ? LAYER_COLOR.financa : state.areas.find((a) => a.id === i.area)?.color || LAYER_COLOR[i.layer];
     return `<span class="dot ${i.done ? 'hollow' : ''}" style="--c: var(--c${color})"></span>`;
   }).join('');
   const shiftLabel = shift

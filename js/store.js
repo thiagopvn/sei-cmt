@@ -11,9 +11,9 @@ export function defaultState() {
     version: 1,
     profile: { name: '' },
     areas: [
-      { id: 'trabalho', name: 'Trabalho', color: 1 },
+      { id: 'trabalho', name: 'Trabalho', color: 6 },
       { id: 'faculdade', name: 'Faculdade', color: 7 },
-      { id: 'concurso', name: 'Concurso', color: 4 },
+      { id: 'concurso', name: 'Concurso', color: 2 },
       { id: 'familia', name: 'Família', color: 5 },
       { id: 'pessoal', name: 'Pessoal', color: 3 },
     ],
@@ -143,7 +143,7 @@ export const store = {
     emit();
   },
   export() {
-    return JSON.stringify({ app: 'pauta', exportedAt: new Date().toISOString(), data: state }, null, 2);
+    return JSON.stringify({ app: 'rotina-geral', exportedAt: new Date().toISOString(), data: state }, null, 2);
   },
   import(json) {
     const parsed = typeof json === 'string' ? JSON.parse(json) : json;

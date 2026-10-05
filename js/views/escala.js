@@ -143,7 +143,7 @@ function paymentsTab(state, today) {
       ${upcoming.length ? `<div class="list">${upcoming.map(row).join('')}</div>` : emptyState('coins', 'Nada a receber', 'Marque um serviço como “pago” para acompanhar o pagamento.')}</section>
     <section class="card chart-card">
       <h3>Serviços extras por mês (valor)</h3>
-      ${columns(last6, { format: (v) => money(v), color: 1, title: 'valor por mês' })}
+      ${columns(last6, { format: (v) => money(v), color: 6, title: 'valor por mês' })}
     </section>
     ${received.length ? `<details class="section"><summary class="section-head"><h2>Recebidos</h2><span class="muted small">${received.length}</span></summary>
       <div class="list">${received.map((s) => `<div class="row" role="button" tabindex="0" data-action="service-open" data-id="${s.id}">

@@ -1,8 +1,8 @@
 {
-  "name": "pauta",
+  "name": "rotina-geral",
   "version": "1.0.0",
   "private": true,
-  "description": "Pauta — agenda, escala de serviços, trocas, finanças e tarefas em um só app (PWA).",
+  "description": "Rotina Geral — agenda, escala de serviços, trocas, finanças e tarefas em um só app (PWA).",
   "type": "module",
   "scripts": {
     "start": "node scripts/serve.js",

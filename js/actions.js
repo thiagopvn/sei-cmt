@@ -28,7 +28,7 @@ export async function newItemMenu(date = null) {
       { value: 'task', label: 'Tarefa ou prazo', sub: 'Documento, PAD, SEI, trabalho da faculdade…', icon: 'tasks', color: 2 },
       { value: 'routine', label: 'Rotina', sub: 'Algo que se repete: diário, semanal, mensal', icon: 'repeat', color: 3 },
       { value: 'event', label: 'Compromisso', sub: 'Consulta, prova, buscar a filha, férias', icon: 'calendar', color: 5 },
-      { value: 'service', label: 'Serviço', sub: 'Plantão da escala ou serviço extra', icon: 'shield', color: 1 },
+      { value: 'service', label: 'Serviço', sub: 'Plantão da escala ou serviço extra', icon: 'shield', color: 6 },
       { value: 'swap', label: 'Troca de serviço', sub: 'Quem tira por quem e quando', icon: 'swap', color: 7 },
       { value: 'expense', label: 'Conta / despesa', sub: 'Boleto, conta fixa, gasto', icon: 'wallet', color: 8 },
       { value: 'card', label: 'Compra no cartão', sub: 'À vista ou parcelada', icon: 'card', color: 4 },

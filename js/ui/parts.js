@@ -104,12 +104,12 @@ export function chips(items, active, action, { all = null } = {}) {
       data-action="${action}" data-value="${id ?? ''}">${color ? dot(color) : ''}${esc(label)}</button>`).join('')}</div>`;
 }
 
-export const LAYER_COLOR = { servico: 1, troca: 7, tarefa: 2, evento: 5, rotina: 3, financa: 6 };
+export const LAYER_COLOR = { servico: 6, troca: 7, tarefa: 2, evento: 5, rotina: 3, financa: 4 };
 
 export function agendaItemRow(state, it) {
   const color = it.layer === 'servico'
-    ? (it.kind === 'servico' ? 1 : 7)
-    : it.layer === 'financa' ? 6 : areaOf(state, it.area)?.color || LAYER_COLOR[it.layer];
+    ? (it.kind === 'servico' ? LAYER_COLOR.servico : LAYER_COLOR.troca)
+    : it.layer === 'financa' ? LAYER_COLOR.financa : areaOf(state, it.area)?.color || LAYER_COLOR[it.layer];
   const checkable = !!it.ref.taskId || it.layer === 'financa';
   const checkAction = it.ref.taskId
     ? `data-action="task-toggle" data-id="${it.ref.taskId}" data-key="${it.ref.key}"`

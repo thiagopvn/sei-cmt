@@ -129,7 +129,7 @@ function render() {
     if (on) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  document.title = id === 'inicio' ? 'Pauta' : `${view.title} · Pauta`;
+  document.title = id === 'inicio' ? 'Rotina Geral' : `${view.title} · Rotina Geral`;
   renderTimer(state);
   tickTimer();
   updateBadges(state, today);

@@ -27,4 +27,4 @@ createServer(async (req, res) => {
     res.writeHead(404);
     res.end('Não encontrado');
   }
-}).listen(port, () => console.log(`Pauta rodando em http://localhost:${port}`));
+}).listen(port, () => console.log(`Rotina Geral rodando em http://localhost:${port}`));

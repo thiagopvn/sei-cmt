@@ -209,7 +209,7 @@ export default {
 
         ${section('instalar', 'install', 'Instalar no celular', install, 'Instalado, o app abre em tela cheia, funciona sem internet e fica no seu celular como qualquer aplicativo.')}
 
-        <p class="muted small center">Pauta · versão 1.1 · ${ci.user ? 'sincronizado com o Firebase' : 'dados neste aparelho'}</p>
+        <p class="muted small center">Rotina Geral · versão 1.2 · ${ci.user ? 'sincronizado com o Firebase' : 'dados neste aparelho'}</p>
       </div>`;
   },
   mount(el) {
@@ -280,7 +280,7 @@ export default {
       const r = await requestPermission();
       if (r === 'granted') {
         toast('Notificações ativadas');
-        showNotification('Pauta', 'Pronto! Você vai receber lembretes por aqui.', 'test');
+        showNotification('Rotina Geral', 'Pronto! Você vai receber lembretes por aqui.', 'test');
       } else toast('As notificações não foram permitidas');
       rerender();
     },
@@ -293,7 +293,7 @@ export default {
     'aj-area-add'() {
       store.update((s) => {
         const used = new Set(s.areas.map((a) => a.color));
-        const color = Array.from({ length: AREA_SLOTS }, (_, i) => i + 1).find((c) => !used.has(c)) || 1;
+        const color = [6, 7, 2, 5, 3, 4, 8, 1].find((c) => !used.has(c)) || 6;
         s.areas.push({ id: `area-${uid().slice(0, 6)}`, name: 'Nova área', color });
       });
     },
@@ -324,7 +324,7 @@ export default {
       store.update((s) => { s.colleagues = s.colleagues.filter((c) => c.id !== btn.dataset.id); }, { undoable: true });
     },
     'aj-export'() {
-      download(`pauta-backup-${todayKey()}.json`, store.export());
+      download(`rotina-geral-backup-${todayKey()}.json`, store.export());
       setting('settings.lastBackup', new Date().toISOString());
       toast('Backup exportado');
     },

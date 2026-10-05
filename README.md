@@ -1,4 +1,4 @@
-# Pauta
+# Rotina Geral
 
 Aplicativo (PWA) para organizar a vida pessoal e profissional em um só lugar: **escala de serviços e trocas**, **finanças** (contas, cartões, valores a receber), **tarefas com prazo**, **rotinas**, **compromissos** e **cronômetro**. Instala no celular, funciona sem internet e avisa os prazos.
 

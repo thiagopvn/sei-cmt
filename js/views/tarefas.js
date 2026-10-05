@@ -165,7 +165,7 @@ function timeView(state, today) {
     <div class="two-col">
       <section class="card chart-card">
         <h3>Minutos por dia</h3>
-        ${columns(daily, { format: (v) => `${Math.round(v)} min`, color: 1, title: 'minutos por dia' })}
+        ${columns(daily, { format: (v) => `${Math.round(v)} min`, color: 6, title: 'minutos por dia' })}
       </section>
       <section class="card chart-card">
         <h3>Tempo por área</h3>

@@ -1,5 +1,5 @@
 // Service worker: guarda o app para funcionar sem internet e mostra notificações.
-const VERSION = 'pauta-v2';
+const VERSION = 'rotina-geral-v3';
 const FIREBASE = 'https://www.gstatic.com/firebasejs/12.12.0';
 const SDK = ['firebase-app.js', 'firebase-auth.js', 'firebase-database.js'].map((f) => `${FIREBASE}/${f}`);
 const ASSETS = [

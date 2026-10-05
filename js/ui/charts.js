@@ -9,8 +9,8 @@ export function hbars(data, { format = (v) => v, empty = 'Sem dados no período.
   const max = Math.max(...data.map((d) => d.value), 1);
   return `<div class="hbars" role="list">${data.map((d) => `
     <div class="hbar" role="listitem">
-      <div class="hbar-label"><span class="dot" style="--c: var(--c${d.color || 1})"></span>${esc(d.label)}</div>
-      <div class="hbar-track"><span class="hbar-fill" style="width:${Math.max(2, (d.value / max) * 100)}%; --c: var(--c${d.color || 1})"></span></div>
+      <div class="hbar-label"><span class="dot" style="--c: var(--c${d.color || 6})"></span>${esc(d.label)}</div>
+      <div class="hbar-track"><span class="hbar-fill" style="width:${Math.max(2, (d.value / max) * 100)}%; --c: var(--c${d.color || 6})"></span></div>
       <div class="hbar-value">${esc(format(d.value))}</div>
     </div>`).join('')}</div>`;
 }
@@ -19,7 +19,7 @@ export function hbars(data, { format = (v) => v, empty = 'Sem dados no período.
  * Colunas de uma série, com dica ao passar o mouse/tocar e tabela opcional.
  * data: [{ label, value, tip }]
  */
-export function columns(data, { format = (v) => v, color = 1, title = '' } = {}) {
+export function columns(data, { format = (v) => v, color = 6, title = '' } = {}) {
   const max = Math.max(...data.map((d) => d.value), 0);
   const top = niceMax(max);
   const H = 140;
