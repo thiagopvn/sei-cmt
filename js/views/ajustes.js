@@ -1,6 +1,6 @@
 // Ajustes: perfil, aparência, lembretes, escala, áreas, modelos de demanda, categorias, colegas e dados.
 
-import { store, AREA_SLOTS } from '../store.js';
+import { store, AREA_SLOTS, NO_ALERTS } from '../store.js';
 import { esc, uid, moneyInput, parseMoney, normalize } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { todayKey } from '../lib/dates.js';
@@ -127,8 +127,8 @@ export default {
         ${section('perfil', 'user', 'Perfil e aparência', `
           ${field('Como quer ser chamado?', `<input data-setting="profile.name" value="${esc(state.profile.name)}" placeholder="Seu nome" maxlength="40" autocomplete="name">`)}
           <div class="grid-2">
-            ${field('Tema', `<select data-setting="settings.theme">${[['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Escuro']].map(([v, l]) => `<option value="${v}" ${s.theme === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
-            ${field('A semana começa no', `<select data-setting="settings.weekStart" data-num>${[[0, 'Domingo'], [1, 'Segunda']].map(([v, l]) => `<option value="${v}" ${Number(s.weekStart) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
+            ${field('Tema', `<select data-setting="settings.theme">${[['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Escuro']].map(([v, l]) => `<option value="${esc(v)}" ${s.theme === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
+            ${field('A semana começa no', `<select data-setting="settings.weekStart" data-num>${[[0, 'Domingo'], [1, 'Segunda']].map(([v, l]) => `<option value="${esc(v)}" ${Number(s.weekStart) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
           </div>`)}
 
         ${section('lembretes', 'bell', 'Lembretes e notificações', `
@@ -156,7 +156,7 @@ export default {
           </div>
           ${field('Valor padrão do serviço extra', `<input data-setting="settings.service.value" data-money inputmode="decimal" value="${moneyInput(s.service.value)}" placeholder="0,00">`)}
           <div class="grid-2">
-            ${field('Previsão de pagamento', `<select data-setting="settings.service.payRule">${[['nextMonth', 'Dia fixo do mês seguinte'], ['days', 'X dias após o serviço']].map(([v, l]) => `<option value="${v}" ${s.service.payRule === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
+            ${field('Previsão de pagamento', `<select data-setting="settings.service.payRule">${[['nextMonth', 'Dia fixo do mês seguinte'], ['days', 'X dias após o serviço']].map(([v, l]) => `<option value="${esc(v)}" ${s.service.payRule === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
             ${s.service.payRule === 'days'
               ? field('Dias após o serviço', `<input type="number" min="1" max="120" data-setting="settings.service.payDays" data-num value="${s.service.payDays}">`)
               : field('Dia do pagamento', `<input type="number" min="1" max="31" data-setting="settings.service.payDay" data-num value="${s.service.payDay}">`)}
@@ -164,18 +164,18 @@ export default {
 
         ${section('areas', 'grid', 'Áreas da sua vida', `
           <div class="list edit-list">${state.areas.map((a) => `
-            <div class="edit-row" data-area="${a.id}">
+            <div class="edit-row" data-area="${esc(a.id)}">
               <span class="dot big" style="--c: var(--c${a.color})"></span>
               <input value="${esc(a.name)}" data-area-name aria-label="Nome da área" maxlength="30">
-              <select data-area-color aria-label="Cor">${Array.from({ length: AREA_SLOTS }, (_, i) => `<option value="${i + 1}" ${a.color === i + 1 ? 'selected' : ''}>Cor ${i + 1}</option>`).join('')}</select>
-              <button type="button" class="icon-btn" data-action="aj-area-del" data-id="${a.id}" aria-label="Excluir área">${icon('trash', 16)}</button>
+              <select data-area-color aria-label="Cor">${Array.from({ length: AREA_SLOTS }, (_, i) => `<option value="${esc(i + 1)}" ${a.color === i + 1 ? 'selected' : ''}>Cor ${i + 1}</option>`).join('')}</select>
+              <button type="button" class="icon-btn" data-action="aj-area-del" data-id="${esc(a.id)}" aria-label="Excluir área">${icon('trash', 16)}</button>
             </div>`).join('')}</div>
           <button type="button" class="btn btn-sm" data-action="aj-area-add">${icon('plus', 16)}Nova área</button>`,
           'Separe o que é do trabalho, da faculdade, do concurso, da família e pessoal. Nada se mistura.')}
 
         ${section('modelos', 'file', 'Tipos de demanda e modelos', `
           <div class="list">${state.types.map((t) => `
-            <div class="row" role="button" tabindex="0" data-action="aj-type" data-id="${t.id}">
+            <div class="row" role="button" tabindex="0" data-action="aj-type" data-id="${esc(t.id)}">
               <div class="row-main"><div class="row-title">${esc(t.name)}</div>
                 <div class="row-meta"><span class="meta">${t.checklist.length ? `${t.checklist.length} etapas` : 'Sem etapas'}</span>${t.area ? `<span class="meta">${esc(state.areas.find((a) => a.id === t.area)?.name || '')}</span>` : ''}</div></div>
               ${icon('chevronRight', 16)}
@@ -191,10 +191,10 @@ export default {
 
         ${section('colegas', 'users', 'Colegas (para trocas)', state.colleagues.length ? `
           <div class="list edit-list">${state.colleagues.map((c) => `
-            <div class="edit-row" data-colleague="${c.id}">
+            <div class="edit-row" data-colleague="${esc(c.id)}">
               <input value="${esc(c.name)}" data-col-name aria-label="Nome" maxlength="40">
               <input value="${esc(c.phone || '')}" data-col-phone type="tel" inputmode="tel" placeholder="WhatsApp" aria-label="Telefone">
-              <button type="button" class="icon-btn" data-action="aj-col-del" data-id="${c.id}" aria-label="Remover">${icon('trash', 16)}</button>
+              <button type="button" class="icon-btn" data-action="aj-col-del" data-id="${esc(c.id)}" aria-label="Remover">${icon('trash', 16)}</button>
             </div>`).join('')}</div>` : '<p class="muted small">Os colegas aparecem aqui quando você registra trocas.</p>')}
 
         ${section('dados', 'download', 'Backup e dados', `
@@ -225,7 +225,7 @@ export default {
     });
     el.querySelectorAll('[data-alert-day]').forEach((cb) => cb.addEventListener('change', () => {
       const days = [...el.querySelectorAll('[data-alert-day]:checked')].map((x) => Number(x.value)).sort((a, b) => b - a);
-      setting('settings.alertDays', days);
+      setting('settings.alertDays', days.length ? days : NO_ALERTS);
     }));
     el.querySelectorAll('[data-list]').forEach((ta) => ta.addEventListener('change', () => {
       const list = ta.value.split('\n').map((x) => x.trim()).filter(Boolean);
@@ -261,7 +261,14 @@ export default {
     el.querySelector('[data-import]')?.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const ok = await confirmDialog({ title: 'Restaurar backup?', message: 'Os dados atuais deste aparelho serão substituídos pelos do arquivo.', confirmLabel: 'Restaurar' });
+      const ok = await confirmDialog({
+        title: 'Restaurar backup?',
+        message: cloud.info.user
+          ? 'Os dados atuais serão substituídos pelos do arquivo neste aparelho E na nuvem (em todos os seus aparelhos). O que foi criado depois do backup será apagado.'
+          : 'Os dados atuais deste aparelho serão substituídos pelos do arquivo.',
+        confirmLabel: 'Restaurar',
+        danger: !!cloud.info.user,
+      });
       if (!ok) return;
       try {
         store.import(await file.text());
@@ -338,9 +345,13 @@ export default {
     async 'aj-logout'() {
       const ok = await confirmDialog({ title: 'Sair da conta?', message: 'Os dados continuam salvos na nuvem e voltam quando você entrar de novo. Este aparelho fica sem os dados até lá.', confirmLabel: 'Sair' });
       if (!ok) return;
-      if (cloud.info.pending && cloud.info.status !== 'online') {
-        const sure = await confirmDialog({ title: 'Há alterações não enviadas', message: `${cloud.info.pending} alteração(ões) ainda não chegaram à nuvem por falta de internet. Se sair agora, elas serão perdidas.`, confirmLabel: 'Sair mesmo assim', danger: true });
-        if (!sure) return;
+      if (cloud.info.pending) {
+        toast('Enviando as últimas alterações…', { timeout: 5000 });
+        const synced = await cloud.waitForSync(cloud.info.status === 'online' ? 8000 : 1500);
+        if (!synced) {
+          const sure = await confirmDialog({ title: 'Há alterações não enviadas', message: `${cloud.info.pending} alteração(ões) ainda não chegaram à nuvem${cloud.info.status === 'online' ? '' : ' por falta de internet'}. Se sair agora, elas serão perdidas.`, confirmLabel: 'Sair mesmo assim', danger: true });
+          if (!sure) return;
+        }
       }
       await cloud.signOut();
     },

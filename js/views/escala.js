@@ -21,7 +21,7 @@ function miniCalendar(state, M, shifts, today) {
     const sh = byDate.get(d);
     const out = monthOf(d) !== M;
     return `<button type="button" class="mini-cell ${out ? 'out' : ''} ${d === today ? 'today' : ''} ${sh ? `shift-${sh.kind}` : ''}"
-      ${out ? 'tabindex="-1"' : ''} data-action="${sh ? 'es-open' : 'service-new'}" data-date="${d}" data-shift="${sh ? esc(sh.id) : ''}"
+      ${out ? 'tabindex="-1"' : ''} data-action="${sh ? 'es-open' : 'service-new'}" data-date="${esc(d)}" data-shift="${esc(sh ? sh.id : '')}"
       aria-label="${fmtShort(d)}${sh ? `: ${esc(shiftTitle(sh))}` : ': sem serviço, toque para adicionar'}">${fromKey(d).getDate()}</button>`;
   }).join('');
   return `<div class="mini-cal card">
@@ -60,7 +60,7 @@ function shiftRow(state, sh, today) {
         ${payPill(pay)}
       </div>
     </div>
-    ${pay && pay !== 'recebido' && sh.date <= today ? `<button type="button" class="btn btn-sm" data-action="service-received" data-id="${sh.service.id}">${icon('check', 14)}Recebi</button>` : ''}
+    ${pay && pay !== 'recebido' && sh.date <= today ? `<button type="button" class="btn btn-sm" data-action="service-received" data-id="${esc(sh.service.id)}">${icon('check', 14)}Recebi</button>` : ''}
   </div>`;
 }
 
@@ -87,7 +87,7 @@ function swapsTab(state, today) {
   const swapCard = (w) => {
     const st = swapStatus(w, today);
     const pill = { quitada: 'pill-good', devo: 'pill-warning', me_devem: 'pill-violet', agendada: 'pill-soft' }[st];
-    return `<article class="swap-card card" role="button" tabindex="0" data-action="swap-open" data-id="${w.id}">
+    return `<article class="swap-card card" role="button" tabindex="0" data-action="swap-open" data-id="${esc(w.id)}">
       <div class="swap-top"><strong>${icon('user', 16)}${esc(w.colleague)}</strong><span class="pill ${pill}">${SWAP_LABEL[st]}</span></div>
       <div class="legs">${leg('Ele tira o meu', w.myDate, 'out')}${leg('Eu tiro o dele', w.theirDate, 'in')}</div>
       ${w.notes ? `<p class="muted small">${esc(w.notes)}</p>` : ''}
@@ -104,7 +104,7 @@ function swapsTab(state, today) {
           <span class="avatar">${esc(b.colleague.split(' ').map((p) => p[0]).slice(-2).join('').toUpperCase())}</span>
           <div class="row-main"><strong>${esc(b.colleague)}</strong>
             <span class="muted small">${b.devo ? `Você deve ${plural(b.devo, 'serviço', 'serviços')}` : ''}${b.devo && b.meDevem ? ' · ' : ''}${b.meDevem ? `Te deve ${plural(b.meDevem, 'serviço', 'serviços')}` : ''}${!b.devo && !b.meDevem ? `${plural(b.abertas, 'troca agendada', 'trocas agendadas')}` : ''}</span></div>
-          ${ph ? `<a class="btn btn-sm" href="${whatsappLink(ph, msg)}" target="_blank" rel="noopener">${icon('whatsapp', 16)}Conversar</a>` : ''}
+          ${ph ? `<a class="btn btn-sm" href="${esc(whatsappLink(ph, msg))}" target="_blank" rel="noopener">${icon('whatsapp', 16)}Conversar</a>` : ''}
         </div>`;
       }).join('')}</div>
     </section>` : ''}
@@ -125,13 +125,13 @@ function paymentsTab(state, today) {
     label: monthShortLabel(m),
     value: sum(state.services.filter((s) => s.paid && monthOf(s.date) === m), (s) => s.value),
   }));
-  const row = (p) => `<div class="row" role="button" tabindex="0" data-action="service-open" data-id="${p.service.id}">
+  const row = (p) => `<div class="row" role="button" tabindex="0" data-action="service-open" data-id="${esc(p.service.id)}">
     <div class="row-main">
       <div class="row-title">Serviço de ${fmtShort(p.service.date)}${p.service.unit ? ` · ${esc(p.service.unit)}` : ''}</div>
       <div class="row-meta">${payPill(p.status)}<span class="meta">Previsão ${fmtDM(p.expected)}${p.status === 'atrasado' ? ` (${relDays(p.expected, today)})` : ''}</span></div>
     </div>
     <span class="amount">${money(p.service.value)}</span>
-    <button type="button" class="btn btn-sm" data-action="service-received" data-id="${p.service.id}">${icon('check', 14)}Recebi</button>
+    <button type="button" class="btn btn-sm" data-action="service-received" data-id="${esc(p.service.id)}">${icon('check', 14)}Recebi</button>
   </div>`;
   return `
     <div class="tiles">
@@ -146,7 +146,7 @@ function paymentsTab(state, today) {
       ${columns(last6, { format: (v) => money(v), color: 6, title: 'valor por mês' })}
     </section>
     ${received.length ? `<details class="section"><summary class="section-head"><h2>Recebidos</h2><span class="muted small">${received.length}</span></summary>
-      <div class="list">${received.map((s) => `<div class="row" role="button" tabindex="0" data-action="service-open" data-id="${s.id}">
+      <div class="list">${received.map((s) => `<div class="row" role="button" tabindex="0" data-action="service-open" data-id="${esc(s.id)}">
         <div class="row-main"><div class="row-title">Serviço de ${fmtShort(s.date)}</div><div class="row-meta">${payPill('recebido')}<span class="meta">em ${fmtDM(s.receivedAt)}</span></div></div>
         <span class="amount">${money(s.value)}</span></div>`).join('')}</div></details>` : ''}`;
 }

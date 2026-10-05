@@ -62,7 +62,7 @@ export function invoice(state, card, M) {
 export function cardUsed(state, card, today) {
   const M = monthOf(today);
   let used = 0;
-  for (let i = -3; i <= 24; i++) {
+  for (let i = -36; i <= 24; i++) {
     const inv = invoice(state, card, addMonths(M, i));
     if (!inv.paidAt) used += inv.total;
   }

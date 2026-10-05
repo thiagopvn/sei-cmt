@@ -44,8 +44,8 @@ export function taskRow(state, inst, today, { showArea = true, showDate = true }
     ? `<span class="pill pill-soft">${t.status === 'doing' ? 'Em andamento' : 'Aguardando'}</span>` : '';
   return `
     <div class="row task-row ${inst.done ? 'is-done' : ''}" role="button" tabindex="0"
-         data-action="task-open" data-id="${t.id}" data-key="${inst.key}">
-      <button type="button" class="check ${inst.done ? 'checked' : ''}" data-action="task-toggle" data-id="${t.id}" data-key="${inst.key}"
+         data-action="task-open" data-id="${esc(t.id)}" data-key="${esc(inst.key)}">
+      <button type="button" class="check ${inst.done ? 'checked' : ''}" data-action="task-toggle" data-id="${esc(t.id)}" data-key="${esc(inst.key)}"
         aria-label="${inst.done ? 'Desmarcar' : 'Concluir'}: ${esc(t.title)}" aria-pressed="${inst.done}">${icon('check', 14)}</button>
       <div class="row-main">
         <div class="row-title">${t.priority === 1 && !inst.done ? `<span class="prio-flag" title="Prioridade alta">${icon('flag', 14)}</span>` : ''}${esc(t.title)}</div>
@@ -60,7 +60,7 @@ export function taskRow(state, inst, today, { showArea = true, showDate = true }
           ${Number(t.value) > 0 ? `<span class="meta">${icon('coins', 13)}${money(t.value)}${t.receivedAt ? ' · recebido' : ''}</span>` : ''}
         </div>
       </div>
-      ${inst.done ? '' : `<button type="button" class="icon-btn timer-btn ${running ? 'on' : ''}" data-action="${running ? 'timer-stop' : 'timer-start'}" data-id="${t.id}"
+      ${inst.done ? '' : `<button type="button" class="icon-btn timer-btn ${running ? 'on' : ''}" data-action="${running ? 'timer-stop' : 'timer-start'}" data-id="${esc(t.id)}"
         aria-label="${running ? 'Parar cronômetro' : 'Iniciar cronômetro'}">${icon(running ? 'stop' : 'timer', 18)}</button>`}
     </div>`;
 }
@@ -76,7 +76,7 @@ export function emptyState(ic, title, text = '', action = '') {
 
 export function tile(label, value, { sub = '', ic = '', to = '', tone = '' } = {}) {
   const tag = to ? 'a' : 'div';
-  return `<${tag} class="tile ${tone}" ${to ? `href="${to}"` : ''}>
+  return `<${tag} class="tile ${tone}" ${to ? `href="${esc(to)}"` : ''}>
     <span class="tile-label">${ic ? icon(ic, 16) : ''}${esc(label)}</span>
     <span class="tile-value">${value}</span>
     ${sub ? `<span class="tile-sub">${sub}</span>` : ''}
@@ -94,14 +94,14 @@ export function monthNav(M, action) {
 export function tabs(items, active, action) {
   return `<div class="tabs" role="tablist">${items.map(([id, label, badge]) => `
     <button type="button" role="tab" class="tab ${id === active ? 'active' : ''}" aria-selected="${id === active}"
-      data-action="${action}" data-value="${id}">${esc(label)}${badge ? `<span class="badge">${badge}</span>` : ''}</button>`).join('')}</div>`;
+      data-action="${action}" data-value="${esc(id)}">${esc(label)}${badge ? `<span class="badge">${badge}</span>` : ''}</button>`).join('')}</div>`;
 }
 
 export function chips(items, active, action, { all = null } = {}) {
   const list = all ? [[null, all], ...items] : items;
   return `<div class="chips" role="group">${list.map(([id, label, color]) => `
     <button type="button" class="chip ${String(id) === String(active) ? 'active' : ''}" aria-pressed="${String(id) === String(active)}"
-      data-action="${action}" data-value="${id ?? ''}">${color ? dot(color) : ''}${esc(label)}</button>`).join('')}</div>`;
+      data-action="${action}" data-value="${esc(id ?? '')}">${color ? dot(color) : ''}${esc(label)}</button>`).join('')}</div>`;
 }
 
 export const LAYER_COLOR = { servico: 6, troca: 7, tarefa: 2, evento: 5, rotina: 3, financa: 4 };
@@ -112,8 +112,8 @@ export function agendaItemRow(state, it) {
     : it.layer === 'financa' ? LAYER_COLOR.financa : areaOf(state, it.area)?.color || LAYER_COLOR[it.layer];
   const checkable = !!it.ref.taskId || it.layer === 'financa';
   const checkAction = it.ref.taskId
-    ? `data-action="task-toggle" data-id="${it.ref.taskId}" data-key="${it.ref.key}"`
-    : it.layer === 'financa' ? `data-action="fin-toggle" data-key="${esc(it.ref.item.key)}" data-month="${it.ref.item.date.slice(0, 7)}"` : '';
+    ? `data-action="task-toggle" data-id="${esc(it.ref.taskId)}" data-key="${esc(it.ref.key)}"`
+    : it.layer === 'financa' ? `data-action="fin-toggle" data-key="${esc(it.ref.item.key)}" data-month="${esc(it.ref.item.date.slice(0, 7))}"` : '';
   return `
     <div class="row agenda-row layer-${it.layer} kind-${esc(it.kind)} ${it.done ? 'is-done' : ''}" role="button" tabindex="0"
          data-action="agenda-open" data-item="${esc(it.id)}">

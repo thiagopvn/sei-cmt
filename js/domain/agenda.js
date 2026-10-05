@@ -88,25 +88,33 @@ export function conflicts(state, from, to) {
   const out = [];
   const shifts = shiftsInRange(state, from, to).filter((s) => s.active);
   if (!shifts.length) return out;
-  const items = collectRange(state, from, addDays(to, 1), { layers: ['tarefa', 'evento', 'rotina'] });
+  const maxDays = Math.max(1, ...shifts.map((s) => Math.ceil((toMin(s.start) + s.hours * 60) / 1440)));
+  const items = collectRange(state, from, addDays(to, maxDays), { layers: ['tarefa', 'evento', 'rotina'] });
   for (const sh of shifts) {
     const startAbs = toMin(sh.start);
     const endAbs = startAbs + sh.hours * 60;
-    const days = [[sh.date, 0], [addDays(sh.date, 1), 1440]];
-    for (const [d, offset] of days) {
+    // Todos os dias tocados pelo turno (um 24h das 8h vai até o dia seguinte; um 48h, até o terceiro dia).
+    const span = Math.ceil(endAbs / 1440);
+    for (let i = 0; i < span; i++) {
+      const d = addDays(sh.date, i);
+      const offset = i * 1440;
+      // Dia "ocupado": o primeiro dia ou um dia em que o turno vai até o fim da tarde (18h).
+      const busyDay = i === 0 || endAbs >= offset + 18 * 60;
       for (const it of items.get(d) || []) {
         if (it.done) continue;
         if (it.ref.taskId) {
-          if (offset === 0 && it.kind === 'prazo') out.push({ date: d, shift: sh, item: it, reason: 'Prazo no dia do serviço' });
+          if (it.kind !== 'prazo') continue;
+          const due = it.time != null ? toMin(it.time) + offset : null;
+          if (due != null ? due >= startAbs && due < endAbs : busyDay) out.push({ date: d, shift: sh, item: it, reason: 'Prazo no dia do serviço' });
           continue;
         }
         const ev = state.events.find((e) => e.id === it.ref.eventId);
         if (ev?.type === 'afastamento') {
-          if (offset === 0) out.push({ date: d, shift: sh, item: it, reason: `Serviço durante ${EVENT_TYPES.afastamento.toLowerCase()}` });
+          if (i === 0) out.push({ date: d, shift: sh, item: it, reason: `Serviço durante ${EVENT_TYPES.afastamento.toLowerCase()}` });
           continue;
         }
         if (it.time == null) {
-          if (offset === 0) out.push({ date: d, shift: sh, item: it, reason: 'Compromisso no dia do serviço' });
+          if (busyDay) out.push({ date: d, shift: sh, item: it, reason: 'Compromisso no dia do serviço' });
           continue;
         }
         const t = toMin(it.time) + offset;

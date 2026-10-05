@@ -74,7 +74,7 @@ export function buildAlarms(state, now = new Date()) {
       }
       continue;
     }
-    for (const n of t.alertDays || s.alertDays || []) {
+    for (const n of (t.alertDays || s.alertDays || []).filter((d) => d >= 0)) {
       const day = addDays(inst.date, -n);
       const when = n === 0 && t.dueTime ? at(day, t.dueTime) - 60 * 60000 : at(day, hour);
       const body = n === 0 ? `Prazo vence hoje${t.dueTime ? ` às ${t.dueTime}` : ''}` : `Prazo vence ${relDays(inst.date, day)} (${fmtDM(inst.date)})`;
@@ -101,7 +101,9 @@ export function buildAlarms(state, now = new Date()) {
   const billDays = Number(s.billAlertDays) || 0;
   for (const it of openItems(state, today, billDays + 1, 1)) {
     if (it.kind !== 'despesa') continue;
-    alarms.push({ key: `f:${it.key}:${it.date}:pre`, when: at(addDays(it.date, -billDays), hour), title: `Conta a pagar: ${it.title}`, body: `${money(it.amount)} · vence ${relDays(it.date, today)} (${fmtDM(it.date)})` });
+    if (billDays > 0) {
+      alarms.push({ key: `f:${it.key}:${it.date}:pre`, when: at(addDays(it.date, -billDays), hour), title: `Conta a pagar: ${it.title}`, body: `${money(it.amount)} · vence ${relDays(it.date, today)} (${fmtDM(it.date)})` });
+    }
     alarms.push({ key: `f:${it.key}:${it.date}:due`, when: at(it.date, hour), title: `Vence hoje: ${it.title}`, body: money(it.amount) });
   }
   return alarms;

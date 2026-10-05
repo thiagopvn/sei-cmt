@@ -36,6 +36,7 @@ let lastDay = todayKey();
 /** 'boot' (carregando) | 'login' | 'app' */
 let phase = 'boot';
 let cloudStarted = false;
+let sdkFailed = false;
 
 function parseHash() {
   const raw = location.hash.replace(/^#\/?/, '');
@@ -85,7 +86,7 @@ function renderTimer(state) {
   bar.hidden = false;
   bar.innerHTML = `
     <span class="tb-pulse" aria-hidden="true"></span>
-    <button type="button" class="tb-text" data-action="task-open" data-id="${t.taskId}" data-key="once">
+    <button type="button" class="tb-text" data-action="task-open" data-id="${esc(t.taskId)}" data-key="once">
       <strong>${esc(t.title)}</strong><span class="tb-mode">${t.target ? `Pomodoro de ${t.target} min` : 'Cronômetro'}</span>
     </button>
     <span class="tb-clock" aria-live="off">${fmtClock(elapsedSec(t))}</span>
@@ -258,6 +259,7 @@ async function startCloud() {
   } catch {
     clearTimeout(slow);
     cloudStarted = false;
+    sdkFailed = true;
     if (hadAccount) toast('Sem internet: usando os dados salvos neste aparelho.', { timeout: 6000 });
     else showLogin('Sem conexão com a internet para entrar agora. Conecte-se ou use o app sem conta.');
   }
@@ -269,9 +271,16 @@ function init() {
     renderSync(info);
     if (currentId === 'ajustes' && phase === 'app') render();
   });
-  // Abriu sem internet: conecta à nuvem assim que a conexão voltar.
+  // Abriu sem internet: quando a conexão voltar, recarrega para baixar o Firebase
+  // (o navegador não tenta de novo um módulo que falhou). Os dados já estão salvos no
+  // aparelho e as alterações ficam na fila de envio.
   window.addEventListener('online', () => {
-    if (!cloudStarted && !cloud.localMode) startCloud();
+    if (cloudStarted || cloud.localMode || !sdkFailed) return;
+    if (hasOverlay()) {
+      toast('A internet voltou.', { action: { label: 'Sincronizar', onClick: () => location.reload() }, timeout: 15000 });
+    } else {
+      location.reload();
+    }
   });
   window.addEventListener('pauta:login', () => {
     cloud.setLocalMode(false);

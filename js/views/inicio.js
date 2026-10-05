@@ -52,7 +52,7 @@ function radarHtml(items) {
   }
   const shown = showAllRadar ? items : items.slice(0, 4);
   return `<div class="radar">${shown.map((r) => `
-    <a class="radar-item lvl-${r.level}" href="${r.to}">
+    <a class="radar-item lvl-${r.level}" href="${esc(r.to)}">
       <span class="radar-ic">${icon(r.icon || LEVEL_ICON[r.level], 18)}</span>
       <span class="radar-text"><strong>${esc(r.title)}</strong>${r.detail ? `<small>${esc(r.detail)}</small>` : ''}</span>
       ${icon('chevronRight', 16, 'radar-go')}
@@ -141,7 +141,7 @@ export default {
           <div class="section-head">
             <h2>${icon('calendar', 18)}Hoje</h2>
             ${routinesToday.length ? `<span class="muted small">Rotinas: ${routinesDone}/${routinesToday.length}</span>` : ''}
-            <button type="button" class="btn btn-sm" data-action="new-menu" data-date="${today}">${icon('plus', 16)}Adicionar</button>
+            <button type="button" class="btn btn-sm" data-action="new-menu" data-date="${esc(today)}">${icon('plus', 16)}Adicionar</button>
           </div>
           ${routinesToday.length ? `<div class="progress" role="progressbar" aria-valuenow="${routinesDone}" aria-valuemax="${routinesToday.length}" aria-label="Rotinas concluídas hoje"><span style="width:${(routinesDone / routinesToday.length) * 100}%"></span></div>` : ''}
           <div class="list">${todayItems.length

@@ -170,9 +170,9 @@ export function shiftTitle(sh) {
 /** Turno ativo cobrindo o momento atual (considera turnos que começaram ontem). */
 export function onDutyNow(state, today, now = new Date()) {
   const m = nowMin(now);
-  const list = shiftsInRange(state, addDays(today, -1), today).filter((s) => s.active);
+  const list = shiftsInRange(state, addDays(today, -3), today).filter((s) => s.active);
   return list.find((s) => {
-    const startMin = toMin(s.start) + (s.date === today ? 0 : -1440);
+    const startMin = toMin(s.start) - diffDays(s.date, today) * 1440;
     return m >= startMin && m < startMin + s.hours * 60;
   }) || null;
 }

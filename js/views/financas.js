@@ -18,10 +18,10 @@ const CAT_COLORS = [6, 2, 7, 4, 5, 3, 8, 1];
 
 function itemRow(it, today) {
   const late = !it.settledAt && it.date < today;
-  const openAction = it.source === 'entry' ? `data-action="entry-open" data-id="${it.ref.entryId}"`
-    : it.source === 'service' ? `data-action="service-open" data-id="${it.ref.serviceId}"`
-      : it.source === 'task' ? `data-action="task-open" data-id="${it.ref.taskId}" data-key="once"`
-        : `data-action="fin-invoice" data-card="${it.ref.cardId}" data-month="${it.ref.month}"`;
+  const openAction = it.source === 'entry' ? `data-action="entry-open" data-id="${esc(it.ref.entryId)}"`
+    : it.source === 'service' ? `data-action="service-open" data-id="${esc(it.ref.serviceId)}"`
+      : it.source === 'task' ? `data-action="task-open" data-id="${esc(it.ref.taskId)}" data-key="once"`
+        : `data-action="fin-invoice" data-card="${esc(it.ref.cardId)}" data-month="${esc(it.ref.month)}"`;
   return `<div class="row fin-row ${it.settledAt ? 'is-done' : ''}" role="button" tabindex="0" ${openAction}>
     <span class="fin-ic ${it.kind}">${icon(SOURCE_ICON[it.source] || 'wallet', 16)}</span>
     <div class="row-main">
@@ -35,7 +35,7 @@ function itemRow(it, today) {
       </div>
     </div>
     <span class="amount ${it.kind}">${it.kind === 'receita' ? '+' : '−'} ${money(it.amount)}</span>
-    <button type="button" class="check ${it.settledAt ? 'checked' : ''}" data-action="fin-toggle" data-key="${esc(it.key)}" data-month="${it.date.slice(0, 7)}"
+    <button type="button" class="check ${it.settledAt ? 'checked' : ''}" data-action="fin-toggle" data-key="${esc(it.key)}" data-month="${esc(it.date.slice(0, 7))}"
       aria-label="${it.settledAt ? 'Desmarcar' : it.kind === 'receita' ? 'Marcar como recebido' : 'Marcar como pago'}">${icon('check', 14)}</button>
   </div>`;
 }
@@ -91,8 +91,8 @@ function cartoesTab(state, M, today) {
       const late = !inv.paidAt && inv.total > 0 && inv.dueDate < today;
       return `<article class="credit-card card" style="--c: var(--c${c.color || 7})">
         <div class="cc-top"><strong>${icon('card', 18)}${esc(c.name)}</strong>
-          <button type="button" class="icon-btn" data-action="card-edit" data-id="${c.id}" aria-label="Editar cartão">${icon('edit', 16)}</button></div>
-        <button type="button" class="cc-invoice" data-action="fin-invoice" data-card="${c.id}" data-month="${M}">
+          <button type="button" class="icon-btn" data-action="card-edit" data-id="${esc(c.id)}" aria-label="Editar cartão">${icon('edit', 16)}</button></div>
+        <button type="button" class="cc-invoice" data-action="fin-invoice" data-card="${esc(c.id)}" data-month="${esc(M)}">
           <span class="muted small">Fatura de ${fmtDM(inv.dueDate)}</span>
           <strong class="big">${money(inv.total)}</strong>
           <span class="row-meta">

@@ -64,7 +64,7 @@ function listView(state, today) {
       <label class="search">${icon('search', 16)}<input type="search" placeholder="Buscar por título, nº do processo…" value="${esc(search)}" data-search aria-label="Buscar tarefas"></label>
       ${typeOptions.length ? `<select class="select-sm" data-type-filter aria-label="Filtrar por tipo">
         <option value="">Todos os tipos</option>
-        ${typeOptions.map((t) => `<option value="${t.id}" ${ui.type === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
+        ${typeOptions.map((t) => `<option value="${esc(t.id)}" ${ui.type === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
       </select>` : ''}
       ${filter ? `<button type="button" class="chip active" data-action="tk-clear-filter">Só atrasadas ${icon('x', 14)}</button>` : ''}
     </div>
@@ -95,10 +95,10 @@ function boardView(state, today) {
       <div class="board-head"><strong>${label}</strong><span class="badge">${items.length}</span></div>
       <div class="board-list" data-drop="${status}">
         ${items.map((i) => `
-          <article class="board-card ${i.done ? 'is-done' : ''}" draggable="true" data-drag="${i.task.id}" role="button" tabindex="0" data-action="task-open" data-id="${i.task.id}" data-key="once">
+          <article class="board-card ${i.done ? 'is-done' : ''}" draggable="true" data-drag="${esc(i.task.id)}" role="button" tabindex="0" data-action="task-open" data-id="${esc(i.task.id)}" data-key="once">
             <div class="row-title">${i.task.priority === 1 && !i.done ? `<span class="prio-flag">${icon('flag', 14)}</span>` : ''}${esc(i.task.title)}</div>
             <div class="row-meta">${dueChip(i, today)}${!ui.area ? areaTag(state, i.task.area) : ''}</div>
-            <button type="button" class="icon-btn board-move" data-action="tk-move" data-id="${i.task.id}" aria-label="Mudar situação">${icon('more', 18)}</button>
+            <button type="button" class="icon-btn board-move" data-action="tk-move" data-id="${esc(i.task.id)}" aria-label="Mudar situação">${icon('more', 18)}</button>
           </article>`).join('') || '<p class="board-empty">Arraste para cá</p>'}
       </div>
     </section>`;
@@ -118,12 +118,12 @@ function routinesView(state, today) {
     const rate = total30.length ? Math.round((total30.filter((d) => isDone(t, d)).length / total30.length) * 100) : null;
     const st = streak(t, today);
     return `<article class="routine card">
-      <div class="routine-top" role="button" tabindex="0" data-action="task-open" data-id="${t.id}" data-key="${inst?.key || t.due}">
+      <div class="routine-top" role="button" tabindex="0" data-action="task-open" data-id="${esc(t.id)}" data-key="${esc(inst?.key || t.due)}">
         <div class="row-main">
           <div class="row-title">${esc(t.title)}</div>
           <div class="row-meta"><span class="meta">${icon('repeat', 13)}${esc(describeRule(t.recurrence, t.due))}${t.dueTime ? ` · ${t.dueTime}` : ''}</span>${!ui.area ? areaTag(state, t.area) : ''}</div>
         </div>
-        ${inst && inst.date <= today ? `<button type="button" class="check big ${inst.done ? 'checked' : ''}" data-action="task-toggle" data-id="${t.id}" data-key="${inst.key}" aria-label="${inst.done ? 'Desmarcar' : 'Marcar como feita'}${inst.date < today ? ` (${fmtShort(inst.date)})` : ' hoje'}">${icon('check', 16)}</button>` : `<span class="muted small">${inst ? `Próxima: ${fmtShort(inst.date)}` : 'Encerrada'}</span>`}
+        ${inst && inst.date <= today ? `<button type="button" class="check big ${inst.done ? 'checked' : ''}" data-action="task-toggle" data-id="${esc(t.id)}" data-key="${esc(inst.key)}" aria-label="${inst.done ? 'Desmarcar' : 'Marcar como feita'}${inst.date < today ? ` (${fmtShort(inst.date)})` : ' hoje'}">${icon('check', 16)}</button>` : `<span class="muted small">${inst ? `Próxima: ${fmtShort(inst.date)}` : 'Encerrada'}</span>`}
       </div>
       <div class="routine-stats">
         <div class="streak-dots" aria-label="Últimas ocorrências">${past.map((d) => `<span class="sd ${isDone(t, d) ? 'ok' : d === today ? 'now' : 'miss'}" title="${fmtShort(d)}: ${isDone(t, d) ? 'feito' : d === today ? 'hoje' : 'não feito'}">${WEEKDAYS_MIN[weekday(d)]}</span>`).join('')}</div>
@@ -135,7 +135,7 @@ function routinesView(state, today) {
     </article>`;
   }).join('');
   return `
-    <div class="toolbar"><button type="button" class="btn btn-primary btn-sm" data-action="routine-new" data-area="${ui.area}">${icon('plus', 16)}Nova rotina</button>
+    <div class="toolbar"><button type="button" class="btn btn-primary btn-sm" data-action="routine-new" data-area="${esc(ui.area)}">${icon('plus', 16)}Nova rotina</button>
       <span class="muted small">Rotinas lembram o que se repete: diário, semanal, mensal ou anual.</span></div>
     ${routines.length ? `<div class="routines">${cards}</div>` : emptyState('repeat', 'Nenhuma rotina ainda', 'Crie rotinas para não esquecer o que se repete.')}
     ${ideas.length ? `<section class="section">
@@ -175,7 +175,7 @@ function timeView(state, today) {
     <section class="section">
       <div class="section-head"><h2>Onde seu tempo foi</h2></div>
       ${topTasks.length ? `<div class="list">${topTasks.map(({ task, sec }) => `
-        <div class="row" role="button" tabindex="0" data-action="task-open" data-id="${task.id}" data-key="once">
+        <div class="row" role="button" tabindex="0" data-action="task-open" data-id="${esc(task.id)}" data-key="once">
           <div class="row-main"><div class="row-title">${esc(task.title)}</div><div class="row-meta">${areaTag(state, task.area)}</div></div>
           <span class="amount">${fmtDuration(sec)}</span>
         </div>`).join('')}</div>` : emptyState('timer', 'Sem registros', 'Use o cronômetro para medir estudo, processos e trabalhos.')}
@@ -203,7 +203,7 @@ export default {
       <header class="page-head">
         <h1>Tarefas</h1>
         <div class="head-actions">
-          <button type="button" class="btn btn-primary btn-sm" data-action="task-new" data-area="${ui.area}">${icon('plus', 16)}Nova</button>
+          <button type="button" class="btn btn-primary btn-sm" data-action="task-new" data-area="${esc(ui.area)}">${icon('plus', 16)}Nova</button>
         </div>
       </header>
       ${chips(areaItems, ui.area || null, 'tk-area', { all: 'Todas' })}

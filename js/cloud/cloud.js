@@ -227,6 +227,26 @@ function stopSession() {
   session = null;
 }
 
+// Alterações feitas enquanto não há sessão (abrindo o app, antes de o login carregar, ou
+// sem internet) entram na fila da conta dona do aparelho, para não serem sobrescritas pela
+// nuvem quando a sincronização começar.
+let baseline = toPaths(store.get());
+store.subscribe((state, meta) => {
+  const next = toPaths(state);
+  const owner = localStorage.getItem(OWNER_KEY);
+  if (!session && !meta?.remote && owner && localStorage.getItem(MODE_KEY) !== 'local') {
+    const changed = Object.keys(diff(baseline, next));
+    if (changed.length) {
+      const pending = loadPending(owner);
+      for (const p of changed) pending.add(p);
+      try {
+        localStorage.setItem(pendingKey(owner), JSON.stringify([...pending]));
+      } catch { /* ignora */ }
+    }
+  }
+  baseline = next;
+});
+
 // ---------- API pública ----------
 
 export const cloud = {
@@ -244,6 +264,22 @@ export const cloud = {
   subscribe(fn) {
     listeners.add(fn);
     return () => listeners.delete(fn);
+  },
+  /** Espera as alterações pendentes chegarem à nuvem (true) ou o tempo acabar (false). */
+  waitForSync(ms = 5000) {
+    if (!info.pending) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        off();
+        resolve(false);
+      }, ms);
+      const off = cloud.subscribe((i) => {
+        if (i.pending) return;
+        clearTimeout(timer);
+        off();
+        resolve(true);
+      });
+    });
   },
   /**
    * Carrega o Firebase e acompanha o login. `onUser` é chamado com o usuário (ou null)

@@ -1,6 +1,6 @@
 // Formulário de tarefa / demanda / rotina.
 
-import { store } from '../store.js';
+import { store, NO_ALERTS } from '../store.js';
 import { esc, uid, parseMoney, moneyInput, money } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { todayKey } from '../lib/dates.js';
@@ -22,7 +22,7 @@ function checklistEditor(items) {
 }
 
 const checklistItem = (c) => `
-  <li data-id="${c.id}">
+  <li data-id="${esc(c.id)}">
     <label class="check-line"><input type="checkbox" ${c.done ? 'checked' : ''} data-check-done><span class="check-box">${icon('check', 12)}</span></label>
     <input type="text" value="${esc(c.title)}" data-check-title aria-label="Etapa">
     <button type="button" class="icon-btn" data-remove-check aria-label="Remover etapa">${icon('x', 16)}</button>
@@ -184,7 +184,7 @@ export function openTaskForm({ task = null, key = null, defaults = {} } = {}) {
         dueTime: fd.get('dueTime') || null,
         recurrence: rec,
         priority: Number(fd.get('priority')) || 2,
-        alertDays: fd.getAll('alertDays').map(Number),
+        alertDays: fd.getAll('alertDays').length ? fd.getAll('alertDays').map(Number) : NO_ALERTS,
         process: fd.get('process').trim(),
         value: hasValue ? parseMoney(fd.get('value')) : 0,
         payDate: hasValue ? fd.get('payDate') || null : null,

@@ -31,13 +31,13 @@ function savePrefs() {
 
 function filters(state) {
   const layerChips = Object.entries(LAYERS).map(([id, label]) => `
-    <button type="button" class="chip ${ui.layers.includes(id) ? 'active' : ''}" aria-pressed="${ui.layers.includes(id)}" data-action="ag-layer" data-value="${id}">
+    <button type="button" class="chip ${ui.layers.includes(id) ? 'active' : ''}" aria-pressed="${ui.layers.includes(id)}" data-action="ag-layer" data-value="${esc(id)}">
       ${dot(LAYER_COLOR[id])}${esc(label)}</button>`).join('');
   return `<div class="filters">
     <div class="chips">${layerChips}</div>
     <select class="select-sm" data-action-change="ag-area" aria-label="Filtrar por área">
       <option value="">Todas as áreas</option>
-      ${state.areas.map((a) => `<option value="${a.id}" ${ui.area === a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}
+      ${state.areas.map((a) => `<option value="${esc(a.id)}" ${ui.area === a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}
     </select>
   </div>`;
 }
@@ -53,7 +53,7 @@ function cellHtml(state, d, items, today, M) {
     ? { servico: [`Serviço ${shift.ref.shift.hours}h`, `${shift.ref.shift.hours}h`], cobrindo: ['Troca', 'Troca'], coberto: ['Coberto', 'Cob.'] }[shift.kind]
     : null;
   return `<button type="button" class="cal-cell ${monthOf(d) !== M ? 'out' : ''} ${d === today ? 'today' : ''} ${d === selected ? 'selected' : ''} ${shift ? `has-shift shift-${shift.kind}` : ''}"
-    data-action="ag-select" data-date="${d}" aria-label="${fmtLong(d)}${items.length ? `, ${items.length} itens` : ''}" aria-pressed="${d === selected}">
+    data-action="ag-select" data-date="${esc(d)}" aria-label="${fmtLong(d)}${items.length ? `, ${items.length} itens` : ''}" aria-pressed="${d === selected}">
     <span class="cal-num">${fromKey(d).getDate()}</span>
     ${shift ? `<span class="cal-shift"><span class="lbl-long">${shiftLabel[0]}</span><span class="lbl-short">${shiftLabel[1]}</span></span>` : ''}
     <span class="cal-dots">${dots}${others.length > 4 ? '<span class="cal-more">+</span>' : ''}</span>
@@ -66,7 +66,7 @@ function dayPanel(state, d, items, today) {
   return `<section class="day-panel card">
     <div class="day-panel-head">
       <div><h2>${fmtLong(d)}</h2><span class="muted small">${relDays(d, today)}</span></div>
-      <button type="button" class="btn btn-sm btn-primary" data-action="new-menu" data-date="${d}">${icon('plus', 16)}Adicionar</button>
+      <button type="button" class="btn btn-sm btn-primary" data-action="new-menu" data-date="${esc(d)}">${icon('plus', 16)}Adicionar</button>
     </div>
     ${conf.map((c) => `<div class="notice notice-serious">${icon('alert', 16)}<span><strong>${esc(c.reason)}:</strong> ${esc(c.item.title)}. Você está de serviço (${c.shift.start}, ${c.shift.hours}h).</span></div>`).join('')}
     <div class="list">${items.length ? items.map((it) => agendaItemRow(state, it)).join('') : emptyState('calendar', 'Nada neste dia', 'Toque em “Adicionar” para criar algo.')}</div>

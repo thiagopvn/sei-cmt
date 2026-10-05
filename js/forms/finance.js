@@ -210,7 +210,7 @@ export function openInvoice(cardId, M) {
         </div>
       </div>
       <div class="list">${inv.items.length ? inv.items.map((it) => `
-        <div class="row" role="button" tabindex="0" data-entry="${it.entry.id}">
+        <div class="row" role="button" tabindex="0" data-entry="${esc(it.entry.id)}">
           <div class="row-main">
             <div class="row-title">${esc(it.entry.description)}</div>
             <div class="row-meta"><span class="meta">${fmtShort(it.entry.date)}</span>${it.count > 1 ? `<span class="meta">Parcela ${it.index}/${it.count}</span>` : ''}<span class="meta">${esc(it.entry.category || '')}</span></div>
