@@ -38,24 +38,45 @@ Aplicativo (PWA) para organizar a vida pessoal e profissional em um só lugar: *
 - Regras de pagamento dos serviços extras, áreas, modelos, categorias financeiras, contatos de colegas.
 - **Backup** (exportar/restaurar arquivo) e dados de exemplo.
 
-## Privacidade e dados
+## Conta e nuvem (Firebase)
 
-Os dados ficam salvos **somente no aparelho** (armazenamento local do navegador). Não há servidor nem login. Faça backups em **Ajustes → Backup** e guarde o arquivo (Drive, WhatsApp, e-mail).
+Os dados ficam no **Firebase Realtime Database** do projeto `projetodemop`, separados por conta (`users/{uid}/data`), e sincronizam em tempo real entre celular e computador.
+
+- **Login:** e-mail e senha (com “esqueci minha senha”) ou conta Google.
+- **Sem internet:** o app abre e funciona com a cópia salva no aparelho; as alterações ficam numa fila e são enviadas quando a conexão volta.
+- **Segurança:** as regras em `database.rules.json` só deixam cada conta ler e gravar os próprios dados.
+- **Sem conta:** também dá para usar só no aparelho (“Usar sem conta”). Ao entrar depois, o que foi criado no aparelho é juntado à conta.
+
+### Configuração no console do Firebase (uma vez)
+
+1. **Authentication → Começar → Método de login:** ative **E-mail/senha** e **Google**.
+2. **Authentication → Configurações → Domínios autorizados:** adicione o domínio onde o app está publicado (ex.: `seu-app.vercel.app`).
+3. **Realtime Database → Regras:** cole o conteúdo de `database.rules.json` e clique em **Publicar**.
+   (Ou, com a Firebase CLI: `firebase deploy --only database`.)
+
+### Testar com o emulador (opcional, para desenvolvimento)
+
+```bash
+npx firebase-tools emulators:start --only auth,database
+# em outro terminal
+npm start
+# abra http://localhost:5173/?emulador
+```
 
 ## Instalar no celular
 
 1. Publique o site (ex.: Vercel, veja abaixo) e abra o endereço no celular.
 2. **Android (Chrome):** menu ⋮ → *Instalar app*. **iPhone (Safari):** Compartilhar → *Adicionar à Tela de Início*.
 
-Os lembretes aparecem com o app aberto ou em segundo plano. Ative as notificações em **Ajustes → Lembretes**.
+Os lembretes aparecem com o app aberto ou em segundo plano. Ative as notificações em **Ajustes → Lembretes**. Faça backup também em **Ajustes → Backup** se quiser uma cópia em arquivo.
 
 ## Rodar e publicar
 
-Não há dependências nem etapa de build: é HTML, CSS e JavaScript puro (módulos ES).
+Não há dependências nem etapa de build: é HTML, CSS e JavaScript puro (módulos ES). O SDK do Firebase é carregado do CDN oficial (`gstatic.com`) e guardado pelo service worker para funcionar offline.
 
 ```bash
 npm start   # servidor local em http://localhost:5173
-npm test    # testes da lógica (escala, trocas, finanças, recorrência, captura rápida…)
+npm test    # testes da lógica (escala, trocas, finanças, recorrência, captura rápida, sincronização…)
 ```
 
 Para publicar na **Vercel**, importe o repositório como projeto estático (sem build). O `vercel.json` já configura o service worker.
@@ -66,9 +87,11 @@ Para publicar na **Vercel**, importe o repositório como projeto estático (sem 
 index.html, manifest.webmanifest, sw.js   app, PWA e modo offline
 css/app.css                               visual (claro/escuro, celular primeiro)
 js/main.js                                navegação, eventos, cronômetro, lembretes
-js/store.js                               estado e armazenamento local
+js/store.js                               estado e cópia local
+js/cloud/                                 Firebase: login e sincronização (config, lógica de sync, conexão)
+database.rules.json                       regras de segurança do Realtime Database
 js/domain/                                regras: escala, trocas, finanças, tarefas, agenda, radar
-js/views/                                 telas: início, agenda, tarefas, escala, finanças, ajustes
+js/views/                                 telas: início, agenda, tarefas, escala, finanças, ajustes, login
 js/forms/                                 formulários
 js/ui/                                    componentes (janelas, campos, gráficos, captura rápida)
 tests/                                    testes automatizados (node --test)

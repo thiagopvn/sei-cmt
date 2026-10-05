@@ -11,6 +11,7 @@ import { activeInstance } from '../domain/tasks.js';
 import { agendaItemRow, tile, emptyState } from '../ui/parts.js';
 import { quickAddHtml, bindQuickAdd } from '../ui/quickadd.js';
 import { rerender } from '../ui/bus.js';
+import { cloud } from '../cloud/cloud.js';
 import { loadSample } from '../sample.js';
 import { canInstall, promptInstall } from '../install.js';
 
@@ -125,7 +126,7 @@ export default {
 
       <section class="section">
         <div class="section-head"><h2>${icon('zap', 18)}Radar</h2></div>
-        ${radarHtml(radar(state, today))}
+        ${radarHtml(radar(state, today, { synced: !!cloud.info.user }))}
       </section>
 
       <div class="tiles">

@@ -57,16 +57,43 @@ export function defaultState() {
   };
 }
 
+// O Firebase devolve listas como objetos e apaga listas/objetos vazios: normaliza tudo.
+const arr = (v) => (Array.isArray(v) ? v.filter((x) => x != null) : v && typeof v === 'object' ? Object.values(v) : []);
+const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+
+function normRule(r) {
+  if (!r || typeof r !== 'object') return null;
+  return r.days ? { ...r, days: arr(r.days).map(Number) } : r;
+}
+
 function migrate(raw) {
   const base = defaultState();
   if (!raw || typeof raw !== 'object') return base;
   const s = { ...base, ...raw };
-  s.settings = { ...base.settings, ...(raw.settings || {}) };
-  s.settings.service = { ...base.settings.service, ...(raw.settings?.service || {}) };
-  s.profile = { ...base.profile, ...(raw.profile || {}) };
-  for (const k of ['tasks', 'events', 'services', 'swaps', 'colleagues', 'entries', 'cards', 'timeLog', 'areas', 'types']) {
-    if (!Array.isArray(s[k])) s[k] = base[k];
+  s.settings = { ...base.settings, ...obj(raw.settings) };
+  s.settings.service = { ...base.settings.service, ...obj(raw.settings?.service) };
+  for (const k of ['alertDays', 'incomeCategories', 'expenseCategories']) {
+    const list = arr(s.settings[k]);
+    s.settings[k] = list.length || k === 'alertDays' ? list : base.settings[k];
   }
+  s.profile = { ...base.profile, ...obj(raw.profile) };
+  for (const k of ['tasks', 'events', 'services', 'swaps', 'colleagues', 'entries', 'cards', 'timeLog']) s[k] = arr(s[k]);
+  for (const k of ['areas', 'types']) {
+    s[k] = arr(s[k]);
+    if (!s[k].length) s[k] = base[k];
+  }
+  s.types = s.types.map((t) => ({ ...t, checklist: arr(t.checklist), area: t.area ?? null }));
+  s.tasks = s.tasks.map((t) => ({
+    ...t,
+    checklist: arr(t.checklist),
+    occ: Object.fromEntries(Object.entries(obj(t.occ)).map(([k, o]) => [k, o?.checks ? { ...o, checks: arr(o.checks) } : obj(o)])),
+    recurrence: normRule(t.recurrence),
+    alertDays: t.alertDays ? arr(t.alertDays).map(Number) : null,
+  }));
+  s.events = s.events.map((e) => ({ ...e, skip: arr(e.skip), recurrence: normRule(e.recurrence) }));
+  s.entries = s.entries.map((e) => ({ ...e, settled: obj(e.settled), amounts: obj(e.amounts) }));
+  s.cards = s.cards.map((c) => ({ ...c, paid: obj(c.paid) }));
+  s.timer = s.timer && typeof s.timer === 'object' && s.timer.taskId ? s.timer : null;
   return s;
 }
 
@@ -90,8 +117,8 @@ function save() {
   }
 }
 
-function emit() {
-  for (const fn of listeners) fn(state);
+function emit(meta = {}) {
+  for (const fn of listeners) fn(state, meta);
 }
 
 export const store = {
@@ -133,10 +160,25 @@ export const store = {
     save();
     emit();
   },
+  /** Substitui o estado pelo que veio da nuvem (não é reenviado para a nuvem). */
+  replaceFromRemote(remote) {
+    state = migrate(remote);
+    undoSnap = null;
+    save();
+    emit({ remote: true });
+  },
+  /** Limpa os dados deste aparelho sem apagar nada da nuvem (ao sair da conta). */
+  clearLocal() {
+    state = defaultState();
+    undoSnap = null;
+    save();
+    emit({ remote: true });
+  },
   /** Somente para testes. */
   _set(s) {
     state = migrate(s);
   },
+  migrate: (raw) => migrate(raw),
 };
 
 export const today = () => todayKey();

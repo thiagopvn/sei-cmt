@@ -11,6 +11,8 @@ import { elapsedSec, fmtClock, stopTimer, togglePomodoro, fmtDuration } from './
 import { openItems } from './domain/finance.js';
 import { pendingPayments } from './domain/shifts.js';
 import './install.js';
+import { cloud } from './cloud/cloud.js';
+import { renderLogin } from './views/login.js';
 
 import inicio from './views/inicio.js';
 import agenda from './views/agenda.js';
@@ -31,6 +33,9 @@ const NAV = [
 let currentId = null;
 let currentRaw = null;
 let lastDay = todayKey();
+/** 'boot' (carregando) | 'login' | 'app' */
+let phase = 'boot';
+let cloudStarted = false;
 
 function parseHash() {
   const raw = location.hash.replace(/^#\/?/, '');
@@ -102,6 +107,7 @@ function tickTimer() {
 }
 
 function render() {
+  if (phase !== 'app') return;
   const { id, params, raw } = parseHash();
   const view = VIEWS[id];
   const state = store.get();
@@ -150,6 +156,7 @@ function onKey(e) {
   const tag = e.target.tagName;
   const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable;
   if (e.key === 'Escape' && closeTop()) return;
+  if (phase !== 'app') return;
   if ((e.key === 'Enter' || e.key === ' ') && !typing && e.target.matches('[role="button"][data-action]')) {
     e.preventDefault();
     e.target.click();
@@ -172,6 +179,7 @@ function onKey(e) {
 }
 
 function minuteTick() {
+  if (phase !== 'app') return;
   const t = todayKey();
   if (t !== lastDay) {
     lastDay = t;
@@ -180,8 +188,96 @@ function minuteTick() {
   checkAlarms(store.get());
 }
 
+// ---------- Conta e sincronização ----------
+
+const SYNC_LABEL = {
+  online: 'Sincronizado',
+  connecting: 'Conectando…',
+  offline: 'Sem internet',
+  error: 'Erro na sincronização',
+};
+
+function renderSync(info) {
+  for (const el of document.querySelectorAll('[data-sync]')) {
+    if (!info.user) {
+      el.hidden = true;
+      continue;
+    }
+    el.hidden = false;
+    const sending = info.status === 'online' && info.pending > 0;
+    const label = sending ? 'Enviando…' : SYNC_LABEL[info.status] || '';
+    el.className = `sync-ind st-${sending ? 'sending' : info.status}`;
+    el.title = `${label}${info.pending ? ` · ${info.pending} alteração(ões) a enviar` : ''}`;
+    el.setAttribute('aria-label', el.title);
+    el.innerHTML = `${icon(info.status === 'offline' || info.status === 'error' ? 'cloudOff' : 'cloud', 18)}<span class="sync-text">${label}${info.pending && info.status !== 'online' ? ` · ${info.pending}` : ''}</span>`;
+  }
+}
+
+function showApp() {
+  phase = 'app';
+  document.body.classList.remove('auth-screen');
+  currentId = null;
+  render();
+}
+
+function showLogin(message = '') {
+  phase = 'login';
+  document.body.classList.add('auth-screen');
+  renderTimer({ timer: null });
+  renderLogin(document.getElementById('view'), {
+    message,
+    fresh: true,
+    onLocal: () => {
+      cloud.setLocalMode(true);
+      showApp();
+    },
+  });
+}
+
+async function startCloud() {
+  if (cloudStarted) return;
+  cloudStarted = true;
+  const hadAccount = !!localStorage.getItem('pauta:owner');
+  if (hadAccount) showApp(); // abre na hora com a cópia local; a nuvem atualiza em seguida
+  else if (phase !== 'app') document.getElementById('view').innerHTML = '<div class="splash"><span class="brand-mark">✓</span><p class="muted">Carregando…</p></div>';
+  // Internet lenta: não deixa a pessoa presa no "Carregando…".
+  const slow = setTimeout(() => {
+    if (phase === 'boot') showLogin('A conexão está lenta. Aguarde, tente entrar ou use o app sem conta.');
+  }, 8000);
+  try {
+    await cloud.init((user) => {
+      if (user) {
+        if (phase !== 'app') {
+          toast(`Conectado como ${user.email || user.name}`);
+          showApp();
+        }
+      } else if (!cloud.localMode) {
+        showLogin();
+      }
+    });
+  } catch {
+    clearTimeout(slow);
+    cloudStarted = false;
+    if (hadAccount) toast('Sem internet: usando os dados salvos neste aparelho.', { timeout: 6000 });
+    else showLogin('Sem conexão com a internet para entrar agora. Conecte-se ou use o app sem conta.');
+  }
+}
+
 function init() {
   buildShell();
+  cloud.subscribe((info) => {
+    renderSync(info);
+    if (currentId === 'ajustes' && phase === 'app') render();
+  });
+  // Abriu sem internet: conecta à nuvem assim que a conexão voltar.
+  window.addEventListener('online', () => {
+    if (!cloudStarted && !cloud.localMode) startCloud();
+  });
+  window.addEventListener('pauta:login', () => {
+    cloud.setLocalMode(false);
+    if (cloudStarted && !cloud.info.user) showLogin();
+    else startCloud();
+  });
   store.subscribe(render);
   window.addEventListener('hashchange', render);
   window.addEventListener('pauta:render', render);
@@ -191,7 +287,8 @@ function init() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') minuteTick();
   });
-  render();
+  if (cloud.localMode) showApp();
+  else startCloud();
   setInterval(tickTimer, 1000);
   setInterval(minuteTick, 60000);
   setTimeout(minuteTick, 2500);

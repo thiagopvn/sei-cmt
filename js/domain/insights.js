@@ -11,7 +11,7 @@ import { monthOf } from '../lib/dates.js';
 
 const names = (list, n = 2) => list.slice(0, n).map((x) => `“${x}”`).join(', ') + (list.length > n ? ` e mais ${list.length - n}` : '');
 
-export function radar(state, today) {
+export function radar(state, today, { synced = false } = {}) {
   const out = [];
   const instances = state.tasks.map((t) => activeInstance(t, today)).filter(Boolean);
   const pending = instances.filter((i) => !i.done && i.date);
@@ -139,7 +139,7 @@ export function radar(state, today) {
   // Backup
   const hasData = state.tasks.length + state.services.length + state.entries.length > 5;
   const last = state.settings.lastBackup;
-  if (hasData && (!last || diffDays(last.slice(0, 10), today) > 30)) {
+  if (!synced && hasData && (!last || diffDays(last.slice(0, 10), today) > 30)) {
     out.push({
       level: 'info', icon: 'download',
       title: 'Faça um backup dos seus dados',

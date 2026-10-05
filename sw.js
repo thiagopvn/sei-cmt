@@ -1,5 +1,7 @@
 // Service worker: guarda o app para funcionar sem internet e mostra notificações.
-const VERSION = 'pauta-v1';
+const VERSION = 'pauta-v2';
+const FIREBASE = 'https://www.gstatic.com/firebasejs/12.12.0';
+const SDK = ['firebase-app.js', 'firebase-auth.js', 'firebase-database.js'].map((f) => `${FIREBASE}/${f}`);
 const ASSETS = [
   './',
   'index.html',
@@ -42,10 +44,18 @@ const ASSETS = [
   'js/views/escala.js',
   'js/views/financas.js',
   'js/views/ajustes.js',
+  'js/views/login.js',
+  'js/cloud/config.js',
+  'js/cloud/sync.js',
+  'js/cloud/cloud.js',
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then(async (c) => {
+    await c.addAll(ASSETS);
+    // SDK do Firebase (para abrir sem internet); se falhar, é baixado no primeiro uso.
+    await c.addAll(SDK).catch(() => {});
+  }).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -56,10 +66,22 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Rede primeiro (sempre a versão mais nova quando online); cache quando offline.
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  if (req.method !== 'GET') return;
+  // SDK do Firebase: arquivos versionados, nunca mudam → cache primeiro.
+  if (req.url.startsWith(FIREBASE)) {
+    e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => {
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(VERSION).then((c) => c.put(req, copy));
+      }
+      return res;
+    })));
+    return;
+  }
+  if (new URL(req.url).origin !== location.origin) return;
+  // App: rede primeiro (sempre a versão mais nova quando online); cache quando offline.
   e.respondWith(
     fetch(req)
       .then((res) => {

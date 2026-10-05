@@ -10,6 +10,7 @@ import { permission, requestPermission, showNotification, notificationsSupported
 import { canInstall, promptInstall, isStandalone, isIOS } from '../install.js';
 import { hasSample, removeSample } from '../sample.js';
 import { rerender } from '../ui/bus.js';
+import { cloud } from '../cloud/cloud.js';
 
 const ALERTS = [[0, 'No dia'], [1, '1 dia'], [2, '2 dias'], [3, '3 dias'], [7, '7 dias'], [15, '15 dias'], [30, '30 dias']];
 
@@ -98,10 +99,31 @@ export default {
           ? `<p class="notice">${icon('install', 16)}<span>No iPhone: abra no <strong>Safari</strong>, toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>.</span></p>`
           : `<p class="notice">${icon('install', 16)}<span>No Android (Chrome): abra o menu <strong>⋮</strong> e toque em <strong>Instalar app</strong> ou <strong>Adicionar à tela inicial</strong>.</span></p>`;
 
+    const ci = cloud.info;
+    const syncPill = {
+      online: ci.pending ? ['pill-soft', 'cloud', `Enviando ${ci.pending} alteração(ões)…`] : ['pill-good', 'check', 'Tudo sincronizado'],
+      connecting: ['pill-soft', 'cloud', 'Conectando…'],
+      offline: ['pill-warning', 'cloudOff', `Sem internet${ci.pending ? ` · ${ci.pending} alteração(ões) serão enviadas depois` : ' · as alterações serão enviadas depois'}`],
+      error: ['pill-critical', 'alert', 'Erro na sincronização'],
+    }[ci.status] || ['pill-soft', 'cloud', 'Desconectado'];
+    const account = ci.user ? `
+      <div class="account-row">
+        <span class="avatar">${esc((ci.user.name || ci.user.email || '?').slice(0, 2).toUpperCase())}</span>
+        <div class="row-main"><strong>${esc(ci.user.name || 'Minha conta')}</strong><span class="muted small">${esc(ci.user.email || '')}</span></div>
+      </div>
+      <p><span class="pill ${syncPill[0]}">${icon(syncPill[1], 13)}${esc(syncPill[2])}</span></p>
+      ${ci.error ? `<p class="notice notice-serious">${icon('alert', 16)}<span>${esc(ci.error)}</span></p>` : ''}
+      <p class="muted small">Seus dados ficam salvos na nuvem (Firebase) e aparecem em qualquer aparelho em que você entrar com esta conta. Sem internet, o app continua funcionando e envia as alterações quando a conexão voltar.</p>
+      <button type="button" class="btn" data-action="aj-logout">${icon('logout', 16)}Sair da conta</button>`
+      : `
+      <p class="notice">${icon('cloudOff', 16)}<span>Você está usando o app <strong>sem conta</strong>: os dados ficam só neste aparelho. Entre para salvar na nuvem e usar no celular e no computador.</span></p>
+      <button type="button" class="btn btn-primary" data-action="aj-login">${icon('cloud', 16)}Entrar ou criar conta</button>`;
+
     return `
       <header class="page-head"><h1>Ajustes</h1></header>
-      <nav class="settings-nav chips">${[['perfil', 'Perfil'], ['lembretes', 'Lembretes'], ['escala-cfg', 'Escala'], ['areas', 'Áreas'], ['modelos', 'Modelos'], ['financas-cfg', 'Finanças'], ['colegas', 'Colegas'], ['dados', 'Backup'], ['instalar', 'Instalar']].map(([id, l]) => `<a class="chip" href="#/ajustes" data-action="aj-jump" data-to="${id}">${l}</a>`).join('')}</nav>
+      <nav class="settings-nav chips">${[['conta', 'Conta'], ['perfil', 'Perfil'], ['lembretes', 'Lembretes'], ['escala-cfg', 'Escala'], ['areas', 'Áreas'], ['modelos', 'Modelos'], ['financas-cfg', 'Finanças'], ['colegas', 'Colegas'], ['dados', 'Backup'], ['instalar', 'Instalar']].map(([id, l]) => `<a class="chip" href="#/ajustes" data-action="aj-jump" data-to="${id}">${l}</a>`).join('')}</nav>
       <div class="settings">
+        ${section('conta', 'cloud', 'Conta e nuvem', account)}
         ${section('perfil', 'user', 'Perfil e aparência', `
           ${field('Como quer ser chamado?', `<input data-setting="profile.name" value="${esc(state.profile.name)}" placeholder="Seu nome" maxlength="40" autocomplete="name">`)}
           <div class="grid-2">
@@ -176,7 +198,7 @@ export default {
             </div>`).join('')}</div>` : '<p class="muted small">Os colegas aparecem aqui quando você registra trocas.</p>')}
 
         ${section('dados', 'download', 'Backup e dados', `
-          <p class="muted small">Seus dados ficam guardados somente neste aparelho. Faça backup com frequência e guarde o arquivo no Drive ou no WhatsApp.
+          <p class="muted small">${ci.user ? 'Seus dados já estão na nuvem. O backup em arquivo é uma cópia extra, se quiser guardar.' : 'Sem conta, seus dados ficam só neste aparelho. Faça backup com frequência e guarde o arquivo no Drive ou no WhatsApp.'}
             ${s.lastBackup ? `Último backup: ${new Date(s.lastBackup).toLocaleDateString('pt-BR')}.` : 'Nenhum backup feito ainda.'}</p>
           <div class="btn-row">
             <button type="button" class="btn btn-primary" data-action="aj-export">${icon('download', 16)}Exportar backup</button>
@@ -187,7 +209,7 @@ export default {
 
         ${section('instalar', 'install', 'Instalar no celular', install, 'Instalado, o app abre em tela cheia, funciona sem internet e fica no seu celular como qualquer aplicativo.')}
 
-        <p class="muted small center">Pauta · versão 1.0 · seus dados não saem do seu aparelho.</p>
+        <p class="muted small center">Pauta · versão 1.1 · ${ci.user ? 'sincronizado com o Firebase' : 'dados neste aparelho'}</p>
       </div>`;
   },
   mount(el) {
@@ -310,8 +332,20 @@ export default {
       removeSample();
       toast('Exemplos removidos', { action: { label: 'Desfazer', onClick: () => store.undo() } });
     },
+    'aj-login'() {
+      window.dispatchEvent(new Event('pauta:login'));
+    },
+    async 'aj-logout'() {
+      const ok = await confirmDialog({ title: 'Sair da conta?', message: 'Os dados continuam salvos na nuvem e voltam quando você entrar de novo. Este aparelho fica sem os dados até lá.', confirmLabel: 'Sair' });
+      if (!ok) return;
+      if (cloud.info.pending && cloud.info.status !== 'online') {
+        const sure = await confirmDialog({ title: 'Há alterações não enviadas', message: `${cloud.info.pending} alteração(ões) ainda não chegaram à nuvem por falta de internet. Se sair agora, elas serão perdidas.`, confirmLabel: 'Sair mesmo assim', danger: true });
+        if (!sure) return;
+      }
+      await cloud.signOut();
+    },
     async 'aj-reset'() {
-      const ok = await confirmDialog({ title: 'Apagar todos os dados?', message: 'Tarefas, escala, trocas, finanças e ajustes deste aparelho serão apagados. Faça um backup antes, se precisar.', confirmLabel: 'Apagar tudo', danger: true });
+      const ok = await confirmDialog({ title: 'Apagar todos os dados?', message: cloud.info.user ? 'Tarefas, escala, trocas, finanças e ajustes serão apagados deste aparelho E da nuvem (em todos os aparelhos). Faça um backup antes, se precisar.' : 'Tarefas, escala, trocas, finanças e ajustes deste aparelho serão apagados. Faça um backup antes, se precisar.', confirmLabel: 'Apagar tudo', danger: true });
       if (!ok) return;
       store.reset();
       toast('Dados apagados', { action: { label: 'Desfazer', onClick: () => store.undo() } });
