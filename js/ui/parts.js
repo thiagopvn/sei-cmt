@@ -9,7 +9,10 @@ import { describeRule } from '../domain/recurrence.js';
 export const areaOf = (state, id) => state.areas.find((a) => a.id === id) || null;
 export const typeOf = (state, id) => state.types.find((t) => t.id === id) || null;
 
-export const dot = (color) => `<span class="dot" style="--c: var(--c${color || 0})"></span>`;
+/** Cor de marcação: um slot da paleta (1–8) ou 'accent' (vermelho do brasão, usado nos serviços). */
+export const colorVar = (color) => (color === 'accent' ? 'var(--accent)' : `var(--c${Number(color) || 0})`);
+
+export const dot = (color) => `<span class="dot" style="--c: ${colorVar(color)}"></span>`;
 
 export function areaTag(state, id) {
   const a = areaOf(state, id);
@@ -104,7 +107,7 @@ export function chips(items, active, action, { all = null } = {}) {
       data-action="${action}" data-value="${esc(id ?? '')}">${color ? dot(color) : ''}${esc(label)}</button>`).join('')}</div>`;
 }
 
-export const LAYER_COLOR = { servico: 8, troca: 7, tarefa: 2, evento: 5, rotina: 3, financa: 4 };
+export const LAYER_COLOR = { servico: 'accent', troca: 7, tarefa: 2, evento: 5, rotina: 3, financa: 4 };
 
 export function agendaItemRow(state, it) {
   const color = it.layer === 'servico'
@@ -117,7 +120,7 @@ export function agendaItemRow(state, it) {
   return `
     <div class="row agenda-row layer-${it.layer} kind-${esc(it.kind)} ${it.done ? 'is-done' : ''}" role="button" tabindex="0"
          data-action="agenda-open" data-item="${esc(it.id)}">
-      <span class="bar" style="--c: var(--c${color})"></span>
+      <span class="bar" style="--c: ${colorVar(color)}"></span>
       <span class="agenda-time">${it.time ? esc(it.time) : '—'}</span>
       <div class="row-main">
         <div class="row-title">${esc(it.title)}</div>

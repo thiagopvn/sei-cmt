@@ -108,7 +108,7 @@ export function actionSheet({ title, options }) {
       size: 'sm',
       body: `<div class="sheet-list">${options.map((o, i) => `
         <button type="button" class="sheet-item ${o.danger ? 'danger' : ''}" data-i="${i}">
-          ${o.icon ? `<span class="sheet-ic" ${o.color ? `style="--c: var(--c${o.color})"` : ''}>${icon(o.icon)}</span>` : ''}
+          ${o.icon ? `<span class="sheet-ic" ${o.color ? `style="--c: ${o.color === 'accent' ? 'var(--accent)' : `var(--c${Number(o.color) || 0})`}"` : ''}>${icon(o.icon)}</span>` : ''}
           <span class="sheet-text"><strong>${esc(o.label)}</strong>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</span>
         </button>`).join('')}</div>`,
       onClose: () => { if (!answered) resolve(null); },
