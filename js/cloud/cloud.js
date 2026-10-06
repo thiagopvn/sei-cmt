@@ -5,7 +5,7 @@
 // feitas sem internet ficam numa fila (persistida) e são enviadas quando a conexão volta.
 
 import { store } from '../store.js';
-import { firebaseConfig, SDK_BASE, userDataPath } from './config.js';
+import { firebaseConfig, SDK_BASE, userDataPath, ALLOWED_EMAILS } from './config.js';
 import { toPaths, diff, samePaths, fromRemote, overlay, pathsOnlyLocal, canon } from './sync.js';
 
 const OWNER_KEY = 'pauta:owner';
@@ -32,10 +32,14 @@ function set(patch) {
   notify();
 }
 
+/** Rodando no computador de desenvolvimento (localhost). */
+export const isDevHost = () => ['localhost', '127.0.0.1'].includes(location.hostname);
+
 function useEmulator() {
-  const local = ['localhost', '127.0.0.1'].includes(location.hostname);
-  return local && new URLSearchParams(location.search).has('emulador');
+  return isDevHost() && new URLSearchParams(location.search).has('emulador');
 }
+
+const isAllowed = (user) => ALLOWED_EMAILS.map((e) => e.toLowerCase()).includes(String(user?.email || '').toLowerCase());
 
 /** Carrega o SDK do Firebase sob demanda (fica em cache no service worker). */
 async function sdk() {
@@ -253,9 +257,9 @@ export const cloud = {
   get info() {
     return { ...info };
   },
-  /** 'local' quando a pessoa escolheu usar sem conta. */
+  /** Uso sem conta (só no computador de desenvolvimento; o app publicado exige login). */
   get localMode() {
-    return localStorage.getItem(MODE_KEY) === 'local';
+    return isDevHost() && localStorage.getItem(MODE_KEY) === 'local';
   },
   setLocalMode(on) {
     if (on) localStorage.setItem(MODE_KEY, 'local');
@@ -282,12 +286,31 @@ export const cloud = {
     });
   },
   /**
-   * Carrega o Firebase e acompanha o login. `onUser` é chamado com o usuário (ou null)
-   * sempre que o login muda. Lança erro se o SDK não puder ser carregado (sem internet).
+   * Carrega o Firebase e acompanha o login. `onUser(user, aviso)` é chamado com o usuário
+   * (ou null e um aviso opcional) sempre que o login muda. Lança erro se o SDK não puder
+   * ser carregado (sem internet).
+   *
+   * Acesso restrito: contas fora de ALLOWED_EMAILS são desconectadas na hora, e contas de
+   * e-mail/senha precisam ter o e-mail confirmado. As regras do banco aplicam o mesmo.
    */
   async init(onUser) {
     const { auth, Auth } = await sdk();
+    let notice = null;
     Auth.onAuthStateChanged(auth, (user) => {
+      if (user && !isAllowed(user)) {
+        notice = { kind: 'error', text: `Acesso restrito. A conta ${user.email || 'usada'} não tem permissão para usar este app.` };
+        stopSession();
+        Auth.signOut(auth);
+        return;
+      }
+      if (user && !user.emailVerified) {
+        stopSession();
+        Auth.sendEmailVerification(user)
+          .then(() => { notice = { kind: 'ok', text: `Confirme seu e-mail: enviamos um link para ${user.email}. Depois de confirmar, entre de novo.` }; })
+          .catch(() => { notice = { kind: 'error', text: 'Seu e-mail ainda não foi confirmado. Não foi possível enviar o link agora; tente de novo em alguns minutos.' }; })
+          .finally(() => Auth.signOut(auth));
+        return;
+      }
       if (user) {
         set({ user: { uid: user.uid, email: user.email, name: user.displayName || '' } });
         if (!session || session.uid !== user.uid) {
@@ -300,22 +323,17 @@ export const cloud = {
       } else {
         stopSession();
         set({ user: null, status: 'off', pending: 0, error: '' });
+        const n = notice;
+        notice = null;
+        onUser(null, n);
+        return;
       }
-      onUser(user ? info.user : null);
+      onUser(info.user);
     });
   },
   async signIn(email, password) {
     const { auth, Auth } = await sdk();
     await Auth.signInWithEmailAndPassword(auth, email, password);
-  },
-  async signUp(email, password, name) {
-    const { auth, Auth } = await sdk();
-    const cred = await Auth.createUserWithEmailAndPassword(auth, email, password);
-    if (name) {
-      await Auth.updateProfile(cred.user, { displayName: name });
-      set({ user: { ...info.user, name } });
-      store.update((s) => { if (!s.profile.name) s.profile.name = name; });
-    }
   },
   async resetPassword(email) {
     const { auth, Auth } = await sdk();

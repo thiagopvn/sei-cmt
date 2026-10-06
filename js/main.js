@@ -221,13 +221,13 @@ function showApp() {
   render();
 }
 
-function showLogin(message = '') {
+function showLogin(message = '', kind = 'error') {
   phase = 'login';
   document.body.classList.add('auth-screen');
   renderTimer({ timer: null });
   renderLogin(document.getElementById('view'), {
     message,
-    fresh: true,
+    kind,
     onLocal: () => {
       cloud.setLocalMode(true);
       showApp();
@@ -243,17 +243,17 @@ async function startCloud() {
   else if (phase !== 'app') document.getElementById('view').innerHTML = '<div class="splash"><img class="brand-logo" src="assets/logo-256.png" alt="" width="96" height="96"><p class="muted">Carregando…</p></div>';
   // Internet lenta: não deixa a pessoa presa no "Carregando…".
   const slow = setTimeout(() => {
-    if (phase === 'boot') showLogin('A conexão está lenta. Aguarde, tente entrar ou use o app sem conta.');
+    if (phase === 'boot') showLogin('A conexão está lenta. Aguarde um pouco ou tente entrar de novo.');
   }, 8000);
   try {
-    await cloud.init((user) => {
+    await cloud.init((user, notice) => {
       if (user) {
         if (phase !== 'app') {
           toast(`Conectado como ${user.email || user.name}`);
           showApp();
         }
       } else if (!cloud.localMode) {
-        showLogin();
+        showLogin(notice?.text || '', notice?.kind);
       }
     });
   } catch {
@@ -261,7 +261,7 @@ async function startCloud() {
     cloudStarted = false;
     sdkFailed = true;
     if (hadAccount) toast('Sem internet: usando os dados salvos neste aparelho.', { timeout: 6000 });
-    else showLogin('Sem conexão com a internet para entrar agora. Conecte-se ou use o app sem conta.');
+    else showLogin('Sem conexão com a internet para entrar agora. Conecte-se e tente de novo.');
   }
 }
 

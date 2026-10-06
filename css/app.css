@@ -1423,9 +1423,7 @@ body.auth-screen { padding-bottom: 24px; }
 .auth-brand .brand-logo { width: 104px; height: 104px; }
 .auth-brand small { color: var(--text-3); font-size: 12.5px; font-weight: 600; letter-spacing: .02em; }
 .auth h1 { font-size: 24px; margin-bottom: 6px; }
-.auth-tabs { width: 100%; margin: 16px 0; }
-.auth-tabs .tab { flex: 1; justify-content: center; }
-.auth-form { display: flex; flex-direction: column; }
+.auth-form { display: flex; flex-direction: column; margin-top: 16px; }
 .auth-submit { width: 100%; min-height: 46px; font-size: 15px; margin-top: 2px; }
 .auth-form .link-btn { align-self: center; margin-top: 8px; }
 .auth-msg { padding: 10px 12px; border-radius: 10px; background: var(--critical-soft); color: var(--critical-text); font-size: 13.5px; margin-bottom: 12px; }

@@ -117,7 +117,7 @@ export default {
       <button type="button" class="btn" data-action="aj-logout">${icon('logout', 16)}Sair da conta</button>`
       : `
       <p class="notice">${icon('cloudOff', 16)}<span>Você está usando o app <strong>sem conta</strong>: os dados ficam só neste aparelho. Entre para salvar na nuvem e usar no celular e no computador.</span></p>
-      <button type="button" class="btn btn-primary" data-action="aj-login">${icon('cloud', 16)}Entrar ou criar conta</button>`;
+      <button type="button" class="btn btn-primary" data-action="aj-login">${icon('cloud', 16)}Entrar</button>`;
 
     return `
       <header class="page-head"><h1>Ajustes</h1></header>
