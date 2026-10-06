@@ -296,19 +296,34 @@ export const cloud = {
   async init(onUser) {
     const { auth, Auth } = await sdk();
     let notice = null;
+    // Desconecta só se a conta recusada ainda for a conta atual (o login pode ter mudado).
+    const rejectIfCurrent = (user) => {
+      if (auth.currentUser?.uid === user.uid) Auth.signOut(auth).catch(() => {});
+    };
+    // Conta recusada num aparelho que tem dados de outra conta: apaga a cópia local
+    // (os dados continuam na nuvem) para não reabrir o app sem internet.
+    const discardOtherOwner = (user) => {
+      const owner = localStorage.getItem(OWNER_KEY);
+      if (!owner || owner === user.uid) return;
+      localStorage.removeItem(pendingKey(owner));
+      localStorage.removeItem(OWNER_KEY);
+      store.clearLocal();
+    };
     Auth.onAuthStateChanged(auth, (user) => {
       if (user && !isAllowed(user)) {
         notice = { kind: 'error', text: `Acesso restrito. A conta ${user.email || 'usada'} não tem permissão para usar este app.` };
         stopSession();
-        Auth.signOut(auth);
+        discardOtherOwner(user);
+        rejectIfCurrent(user);
         return;
       }
       if (user && !user.emailVerified) {
         stopSession();
+        discardOtherOwner(user);
         Auth.sendEmailVerification(user)
           .then(() => { notice = { kind: 'ok', text: `Confirme seu e-mail: enviamos um link para ${user.email}. Depois de confirmar, entre de novo.` }; })
           .catch(() => { notice = { kind: 'error', text: 'Seu e-mail ainda não foi confirmado. Não foi possível enviar o link agora; tente de novo em alguns minutos.' }; })
-          .finally(() => Auth.signOut(auth));
+          .finally(() => rejectIfCurrent(user));
         return;
       }
       if (user) {
