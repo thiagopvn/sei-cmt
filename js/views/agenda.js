@@ -4,7 +4,7 @@ import { esc } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, fromKey, todayKey } from '../lib/dates.js';
 import { collectRange, conflicts, LAYERS } from '../domain/agenda.js';
-import { agendaItemRow, monthNav, tabs, emptyState, dot, LAYER_COLOR } from '../ui/parts.js';
+import { agendaItemRow, monthNav, tabs, emptyState, dot, colorVar, LAYER_COLOR } from '../ui/parts.js';
 import { rerender } from '../ui/bus.js';
 
 const PREF = 'pauta:agenda';
@@ -47,7 +47,7 @@ function cellHtml(state, d, items, today, M) {
   const others = items.filter((i) => i.layer !== 'servico');
   const dots = others.slice(0, 4).map((i) => {
     const color = i.layer === 'financa' ? LAYER_COLOR.financa : state.areas.find((a) => a.id === i.area)?.color || LAYER_COLOR[i.layer];
-    return `<span class="dot ${i.done ? 'hollow' : ''}" style="--c: var(--c${color})"></span>`;
+    return `<span class="dot ${i.done ? 'hollow' : ''}" style="--c: ${colorVar(color)}"></span>`;
   }).join('');
   const shiftLabel = shift
     ? { servico: [`Serviço ${shift.ref.shift.hours}h`, `${shift.ref.shift.hours}h`], cobrindo: ['Troca', 'Troca'], coberto: ['Coberto', 'Cob.'] }[shift.kind]
