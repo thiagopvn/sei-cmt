@@ -2,9 +2,9 @@
 
 import { esc } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
-import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, fromKey, todayKey } from '../lib/dates.js';
+import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, fromKey, todayKey, fmtDM } from '../lib/dates.js';
 import { collectRange, conflicts, LAYERS } from '../domain/agenda.js';
-import { permutaLabel, shortName } from '../domain/shifts.js';
+import { permutaLabel, permutaDoMeuDia, shiftTitle, shortName } from '../domain/shifts.js';
 import { agendaItemRow, monthNav, tabs, emptyState, dot, colorVar, LAYER_COLOR } from '../ui/parts.js';
 import { rerender } from '../ui/bus.js';
 
@@ -50,13 +50,22 @@ function cellHtml(state, d, items, today, M) {
     const color = i.layer === 'financa' ? LAYER_COLOR.financa : state.areas.find((a) => a.id === i.area)?.color || LAYER_COLOR[i.layer];
     return `<span class="dot ${i.done ? 'hollow' : ''}" style="--c: ${colorVar(color)}"></span>`;
   }).join('');
+  const sh = shift?.ref.shift;
+  // Serviço de colega: nome + linha discreta com o dia da troca ("⇄ 16/10").
+  const swapRef = sh?.kind === 'cobrindo'
+    ? `<small class="cal-ref">${icon('swap', 10)}${sh.swap?.myDate ? fmtDM(sh.swap.myDate) : 'troca'}</small>` : '';
   const shiftLabel = shift
-    ? { servico: [`Serviço ${shift.ref.shift.hours}h`, `${shift.ref.shift.hours}h`], cobrindo: [`Serviço de ${shift.ref.shift.colleague}`, shortName(shift.ref.shift.colleague)], coberto: [permutaLabel(shift.ref.shift), permutaLabel(shift.ref.shift, { short: true })] }[shift.kind]
+    ? {
+      servico: [`Serviço ${sh.hours}h`, `${sh.hours}h`],
+      cobrindo: [`Serviço de ${esc(sh.colleague)}${swapRef}`, `${esc(shortName(sh.colleague))}${swapRef}`],
+      coberto: [esc(permutaLabel(sh)), esc(permutaLabel(sh, { short: true }))],
+    }[shift.kind]
     : null;
+  const shiftTip = sh ? `${shiftTitle(sh)}${sh.kind === 'cobrindo' ? ` — ${permutaDoMeuDia(sh).toLowerCase()}` : ''}` : '';
   return `<button type="button" class="cal-cell ${monthOf(d) !== M ? 'out' : ''} ${d === today ? 'today' : ''} ${d === selected ? 'selected' : ''} ${shift ? `has-shift shift-${shift.kind}` : ''}"
-    data-action="ag-select" data-date="${esc(d)}" aria-label="${fmtLong(d)}${items.length ? `, ${items.length} itens` : ''}" aria-pressed="${d === selected}">
+    data-action="ag-select" data-date="${esc(d)}" aria-label="${fmtLong(d)}${shiftTip ? `, ${esc(shiftTip)}` : ''}${items.length ? `, ${items.length} itens` : ''}" aria-pressed="${d === selected}">
     <span class="cal-num">${fromKey(d).getDate()}</span>
-    ${shift ? `<span class="cal-shift"><span class="lbl-long">${shiftLabel[0]}</span><span class="lbl-short">${shiftLabel[1]}</span></span>` : ''}
+    ${shift ? `<span class="cal-shift" title="${esc(shiftTip)}"><span class="lbl-long">${shiftLabel[0]}</span><span class="lbl-short">${shiftLabel[1]}</span></span>` : ''}
     <span class="cal-dots">${dots}${others.length > 4 ? '<span class="cal-more">+</span>' : ''}</span>
     <span class="cal-items">${others.slice(0, 3).map((i) => `<span class="cal-item ${i.done ? 'is-done' : ''}">${i.time ? `${i.time} ` : ''}${esc(i.title)}</span>`).join('')}${others.length > 3 ? `<span class="cal-item muted">+${others.length - 3}</span>` : ''}</span>
   </button>`;

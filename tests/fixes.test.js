@@ -103,7 +103,7 @@ test('serviço de colega mostra de quem é', async () => {
   s.swaps = [{ id: 'w1', colleague: 'Sgt Silva', myDate: '2026-10-16', theirDate: '2026-10-19' }];
   const sh = shiftsInRange(s, '2026-10-01', '2026-10-31').find((x) => x.kind === 'cobrindo');
   assert.equal(shiftTitle(sh), 'Serviço de Sgt Silva');
-  assert.equal(permutaDoMeuDia(sh), 'Permuta do meu dia 16/10');
+  assert.equal(permutaDoMeuDia(sh), 'Troca referente ao dia 16/10');
   assert.equal(shortName('Sgt Silva'), 'Silva');
   assert.equal(shortName('Cb Albuquerque'), 'Albuque.');
   assert.equal(shortName('Pedro'), 'Pedro');

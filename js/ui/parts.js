@@ -10,7 +10,7 @@ export const areaOf = (state, id) => state.areas.find((a) => a.id === id) || nul
 export const typeOf = (state, id) => state.types.find((t) => t.id === id) || null;
 
 /** Cor de marcação: um slot da paleta (1–8) ou 'accent' (vermelho do brasão, usado nos serviços). */
-export const colorVar = (color) => (color === 'accent' ? 'var(--accent)' : `var(--c${Number(color) || 0})`);
+export const colorVar = (color) => (color === 'accent' ? 'var(--accent)' : color === 'swap' ? 'var(--swap-bg)' : `var(--c${Number(color) || 0})`);
 
 export const dot = (color) => `<span class="dot" style="--c: ${colorVar(color)}"></span>`;
 
@@ -107,7 +107,7 @@ export function chips(items, active, action, { all = null } = {}) {
       data-action="${action}" data-value="${esc(id ?? '')}">${color ? dot(color) : ''}${esc(label)}</button>`).join('')}</div>`;
 }
 
-export const LAYER_COLOR = { servico: 'accent', troca: 7, tarefa: 2, evento: 5, rotina: 3, financa: 4 };
+export const LAYER_COLOR = { servico: 'accent', troca: 'swap', tarefa: 2, evento: 5, rotina: 3, financa: 4 };
 
 export function agendaItemRow(state, it) {
   const color = it.layer === 'servico'

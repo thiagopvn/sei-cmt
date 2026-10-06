@@ -168,10 +168,10 @@ export function shortName(name) {
   return n.length > 8 ? `${n.slice(0, 7)}.` : n;
 }
 
-/** Serviço de um colega que eu tiro: "Permuta do meu dia 16/10" (o meu dia que ele tira). */
+/** Serviço de um colega que eu tiro: "Troca referente ao dia 16/10" (o meu dia que ele tira). */
 export function permutaDoMeuDia(sh) {
   const d = sh.swap?.myDate;
-  return d ? `Permuta do meu dia ${fmtDM(d)}` : 'Permuta (meu dia a combinar)';
+  return d ? `Troca referente ao dia ${fmtDM(d)}` : 'Troca (dia a combinar)';
 }
 
 /**
