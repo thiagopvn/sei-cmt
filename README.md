@@ -45,7 +45,7 @@ Os dados ficam no **Firebase Realtime Database** do projeto `projetodemop`, sepa
 - **Login:** e-mail e senha (com “esqueci minha senha”) ou conta Google.
 - **Sem internet:** o app abre e funciona com a cópia salva no aparelho; as alterações ficam numa fila e são enviadas quando a conexão volta.
 - **Segurança:** as regras em `database.rules.json` só deixam cada conta ler e gravar os próprios dados.
-- **Sem conta:** também dá para usar só no aparelho (“Usar sem conta”). Ao entrar depois, o que foi criado no aparelho é juntado à conta.
+- **Acesso restrito:** só a conta `thiago.eear108@gmail.com` (com e-mail confirmado) entra no app e acessa o banco. Qualquer outra conta é desconectada na hora, e as regras do banco recusam leitura e escrita. Para liberar outra pessoa, inclua o e-mail em `ALLOWED_EMAILS` (`js/cloud/config.js`) **e** em `database.rules.json`, e publique as regras de novo.
 
 ### Configuração no console do Firebase (uma vez)
 

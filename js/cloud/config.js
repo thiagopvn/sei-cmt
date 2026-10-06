@@ -17,5 +17,11 @@ export const firebaseConfig = {
 export const FIREBASE_SDK = '12.12.0';
 export const SDK_BASE = `https://www.gstatic.com/firebasejs/${FIREBASE_SDK}`;
 
+/**
+ * Únicas contas com acesso ao app. Precisa ser igual à lista em database.rules.json,
+ * que é quem realmente bloqueia o acesso no servidor.
+ */
+export const ALLOWED_EMAILS = ['thiago.eear108@gmail.com'];
+
 /** Onde os dados de cada usuário ficam no Realtime Database. */
 export const userDataPath = (uid) => `users/${uid}/data`;
