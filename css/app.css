@@ -647,6 +647,7 @@ a.tile:hover { border-color: var(--border-strong); }
   text-align: center;
 }
 .tab .badge { background: var(--critical); color: #fff; }
+@media (max-width: 480px) { .tab { padding: 7px 9px; font-size: 13px; gap: 4px; } .tab .badge { min-width: 18px; height: 18px; line-height: 18px; padding: 0 5px; } }
 
 .chips {
   display: flex;
@@ -1482,3 +1483,8 @@ body.auth-screen { background: linear-gradient(180deg, var(--brand-dark) 0, var(
 body.auth-screen .auth-local { color: var(--text-3); }
 .swap-svc:not(:empty) { padding-left: 42px; }
 .notice-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* Tarefa remunerada: bloco próprio no formulário */
+.pay-section { margin: 4px 0 14px; border: 1px solid var(--border); border-radius: 12px; padding: 0 12px; }
+.pay-section > .switch-row { margin-bottom: 0; }
+.pay-section .value-fields { padding-bottom: 6px; }
+.pay-section .value-fields > p { margin: 0 0 10px; }

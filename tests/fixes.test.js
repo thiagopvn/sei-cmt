@@ -158,3 +158,21 @@ test('extra pode ser de mais de um militar', async () => {
   s.services = [{ id: 's1', date: '2026-10-09', start: '08:00', hours: 24, type: 'extra', paid: true, owner: 'Sgt Silva, Cb Souza' }];
   assert.equal(shiftTitle(shiftsInRange(s, '2026-10-01', '2026-10-31')[0]), 'Serviço extra (pago) de Sgt Silva e Cb Souza');
 });
+
+test('tarefa remunerada entra em Finanças com quem paga e situação do pagamento', async () => {
+  const { ledger, taskPayStatus, setSettled } = await import('../js/domain/finance.js');
+  const s = defaultState();
+  s.tasks = [
+    { id: 't1', title: 'Orientação de TCC', value: 500, payDate: '2026-10-20', payer: 'Aluno João', status: 'todo' },
+    { id: 't2', title: 'SEI pago', value: 300, payDate: '2026-10-01', status: 'done' },
+    { id: 't3', title: 'IPM sem data', value: 200, createdAt: '2026-10-03T12:00:00.000Z', status: 'todo' },
+  ];
+  assert.equal(taskPayStatus(s.tasks[0], '2026-10-06'), 'pendente');
+  assert.equal(taskPayStatus(s.tasks[1], '2026-10-06'), 'atrasado');
+  const items = ledger(s, '2026-10').filter((i) => i.source === 'task');
+  assert.deepEqual(items.map((i) => i.ref.taskId).sort(), ['t1', 't2', 't3']);
+  assert.deepEqual(items.find((i) => i.ref.taskId === 't1').payers, ['Aluno João']);
+  setSettled(s, items.find((i) => i.ref.taskId === 't1'), '2026-10-06');
+  assert.equal(taskPayStatus(s.tasks[0], '2026-10-06'), 'recebido');
+  assert.equal(migrate(s).tasks[0].payer, 'Aluno João');
+});

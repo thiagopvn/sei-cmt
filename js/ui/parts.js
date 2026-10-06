@@ -2,9 +2,10 @@
 
 import { esc, money } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
-import { diffDays, fmtShort, monthLabel, relDays } from '../lib/dates.js';
+import { diffDays, fmtShort, fmtDM, monthLabel, relDays } from '../lib/dates.js';
 import { checklistFor, urgency } from '../domain/tasks.js';
 import { describeRule } from '../domain/recurrence.js';
+import { taskPayStatus } from '../domain/finance.js';
 
 export const areaOf = (state, id) => state.areas.find((a) => a.id === id) || null;
 export const typeOf = (state, id) => state.types.find((t) => t.id === id) || null;
@@ -38,6 +39,16 @@ export function dueChip(inst, today) {
   }
 }
 
+/** Selo de pagamento de uma tarefa remunerada: recebido (verde), a receber (dourado) ou atrasado. */
+export function taskPayPill(t, today) {
+  const st = taskPayStatus(t, today);
+  if (!st) return '';
+  const v = money(t.value);
+  if (st === 'recebido') return `<span class="pill pill-good">${icon('check', 13)}${v} recebido</span>`;
+  if (st === 'atrasado') return `<span class="pill pill-critical">${icon('coins', 13)}${v} · pagamento atrasado</span>`;
+  return `<span class="pill pill-warning">${icon('coins', 13)}${v} a receber${t.payDate ? ` · ${fmtDM(t.payDate)}` : ''}</span>`;
+}
+
 export function taskRow(state, inst, today, { showArea = true, showDate = true } = {}) {
   const t = inst.task;
   const list = checklistFor(t, inst.key);
@@ -61,7 +72,7 @@ export function taskRow(state, inst, today, { showArea = true, showDate = true }
           ${showArea ? areaTag(state, t.area) : ''}
           ${list.length ? `<span class="meta">${icon('tasks', 13)}${doneCount}/${list.length}</span>` : ''}
           ${t.process ? `<span class="meta">nº ${esc(t.process)}</span>` : ''}
-          ${Number(t.value) > 0 ? `<span class="meta">${icon('coins', 13)}${money(t.value)}${t.receivedAt ? ' · recebido' : ''}</span>` : ''}
+          ${taskPayPill(t, today)}
         </div>
       </div>
       ${inst.done ? '' : `<button type="button" class="icon-btn timer-btn ${running ? 'on' : ''}" data-action="${running ? 'timer-stop' : 'timer-start'}" data-id="${esc(t.id)}"

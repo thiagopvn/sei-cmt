@@ -116,6 +116,7 @@ function migrate(raw) {
     dueTime: time(t.dueTime),
     payDate: date(t.payDate),
     receivedAt: date(t.receivedAt),
+    payer: typeof t.payer === 'string' ? t.payer.trim().slice(0, 120) : '',
     checklist: arr(t.checklist).map((c) => ({ ...c, id: safeId(c.id) })),
     occ: Object.fromEntries(Object.entries(safeKeys(t.occ)).map(([k, o]) => [k, o?.checks ? { ...o, checks: arr(o.checks).map(safeId) } : obj(o)])),
     recurrence: normRule(t.recurrence),

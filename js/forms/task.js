@@ -71,8 +71,9 @@ export function openTaskForm({ task = null, key = null, defaults = {} } = {}) {
   const t = task || {
     title: '', area: defaults.area || state.areas[0]?.id, type: defaults.type || 'outro', priority: 2, status: 'todo',
     due: defaults.due || '', dueTime: defaults.dueTime || '', recurrence: defaults.recurrence || null,
-    checklist: [], process: '', value: 0, notes: '', alertDays: null,
+    checklist: [], process: '', value: 0, payDate: '', payer: '', receivedAt: null, notes: '', alertDays: null,
   };
+  const paid = Number(t.value) > 0 || !!defaults.paid;
   const checklist = task ? checklistFor(task, key || 'once') : t.checklist;
   const alertDays = t.alertDays || state.settings.alertDays;
   const spent = task ? taskSeconds(state, task.id) : 0;
@@ -95,6 +96,21 @@ export function openTaskForm({ task = null, key = null, defaults = {} } = {}) {
     <div class="status-field" ${t.recurrence ? 'hidden' : ''}>
       ${field('Situação', segmented('status', Object.entries(STATUS), t.status))}
     </div>
+    <div class="pay-section">
+      ${toggle('hasValue', paid, 'Tarefa remunerada (vou receber por ela)')}
+      <div class="value-fields" ${paid ? '' : 'hidden'}>
+        <p class="muted small">Ex.: orientação de TCC, SEI pago, IPM, sindicância. Entra em Finanças como valor a receber.</p>
+        <div class="grid-2">
+          ${field('Valor a receber', input('value', Number(t.value) > 0 ? moneyInput(t.value) : '', 'inputmode="decimal" placeholder="0,00"'))}
+          ${field('Previsão de pagamento', input('payDate', t.payDate || '', 'type="date"'), { hint: 'Vazio: usa o prazo da tarefa.' })}
+        </div>
+        ${field('Quem paga (opcional)', input('payer', t.payer || '', 'placeholder="Ex.: Aluno João, Faculdade X, Cap Silva" maxlength="120" autocomplete="off"'))}
+        ${toggle('received', !!t.receivedAt, 'Já recebi')}
+        <div class="received-field" ${t.receivedAt ? '' : 'hidden'}>
+          ${field('Recebido em', input('receivedAt', t.receivedAt || todayKey(), 'type="date"'))}
+        </div>
+      </div>
+    </div>
     <div class="alert-field">
       <span class="field-label">${icon('bell', 14)} Avisar antes do prazo</span>
       <div class="chips-row">${ALERT_OPTIONS.map(([n, l]) => `
@@ -104,14 +120,9 @@ export function openTaskForm({ task = null, key = null, defaults = {} } = {}) {
       <span class="field-label">Passo a passo</span>
       ${checklistEditor(checklist)}
     </div>
-    <details class="more" ${t.process || Number(t.value) > 0 || t.notes ? 'open' : ''}>
-      <summary>Mais detalhes: processo, valor a receber e anotações</summary>
+    <details class="more" ${t.process || t.notes ? 'open' : ''}>
+      <summary>Mais detalhes: processo e anotações</summary>
       ${field('Nº do processo / SEI / documento', input('process', t.process, 'placeholder="Ex.: SEI-270001/000123/2026" autocomplete="off"'))}
-      ${toggle('hasValue', Number(t.value) > 0, 'Este trabalho gera renda (ex.: TCC, IPM, serviço avulso)')}
-      <div class="value-fields grid-2" ${Number(t.value) > 0 ? '' : 'hidden'}>
-        ${field('Valor a receber', input('value', moneyInput(t.value), 'inputmode="decimal" placeholder="0,00"'))}
-        ${field('Previsão de pagamento', input('payDate', t.payDate || '', 'type="date"'))}
-      </div>
       ${field('Anotações', textarea('notes', t.notes, 'placeholder="Contatos, links, observações…"'))}
     </details>
     ${task ? `<div class="time-spent">${icon('timer', 16)} Tempo registrado: <strong>${spent ? fmtDuration(spent) : 'nenhum'}</strong></div>` : ''}
@@ -138,6 +149,10 @@ export function openTaskForm({ task = null, key = null, defaults = {} } = {}) {
       freq.addEventListener('change', syncFreq);
       el.querySelector('[name="hasValue"]').addEventListener('change', (e) => {
         el.querySelector('.value-fields').hidden = !e.target.checked;
+        if (e.target.checked) el.querySelector('[name="value"]').focus();
+      });
+      el.querySelector('[name="received"]').addEventListener('change', (e) => {
+        el.querySelector('.received-field').hidden = !e.target.checked;
       });
       if (isNew) {
         el.querySelector('[name="type"]').addEventListener('change', (e) => {
@@ -176,6 +191,12 @@ export function openTaskForm({ task = null, key = null, defaults = {} } = {}) {
       const due = fd.get('due') || (rec ? todayKey() : null);
       const list = readChecklist(form);
       const hasValue = fd.get('hasValue') === 'on';
+      if (hasValue && !(parseMoney(fd.get('value')) > 0)) {
+        form.querySelector('[name="value"]').classList.add('invalid');
+        form.querySelector('[name="value"]').focus();
+        toast('Informe o valor que você vai receber');
+        return false;
+      }
       const data = {
         title: fd.get('title').trim(),
         area: fd.get('area'),
@@ -188,6 +209,8 @@ export function openTaskForm({ task = null, key = null, defaults = {} } = {}) {
         process: fd.get('process').trim(),
         value: hasValue ? parseMoney(fd.get('value')) : 0,
         payDate: hasValue ? fd.get('payDate') || null : null,
+        payer: hasValue ? fd.get('payer').trim() : '',
+        receivedAt: hasValue && fd.get('received') === 'on' ? fd.get('receivedAt') || todayKey() : null,
         notes: fd.get('notes').trim(),
       };
       store.update((s) => {

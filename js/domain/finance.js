@@ -14,6 +14,18 @@ import { expectedPayDate, ownersOf } from './shifts.js';
 export const SERVICE_INCOME_CATEGORY = 'Serviço extra';
 export const TASK_INCOME_CATEGORY = 'Trabalhos (TCC, IPM…)';
 
+/** Quando espero receber por uma tarefa remunerada: previsão, prazo, conclusão ou criação. */
+export function taskPayDate(t) {
+  return t.payDate || t.due || (t.doneAt ? t.doneAt.slice(0, 10) : null) || (t.createdAt ? String(t.createdAt).slice(0, 10) : null);
+}
+
+/** Tarefa remunerada: null (não é) | 'recebido' | 'atrasado' | 'pendente'. */
+export function taskPayStatus(t, today) {
+  if (!(Number(t.value) > 0)) return null;
+  if (t.receivedAt) return 'recebido';
+  return t.payDate && t.payDate < today ? 'atrasado' : 'pendente';
+}
+
 export function entryOccurrences(entry, M) {
   if (entry.cardId || !entry.date) return [];
   const start = monthOf(entry.date);
@@ -110,7 +122,7 @@ export function ledger(state, M) {
   }
   for (const t of state.tasks) {
     if (!(Number(t.value) > 0)) continue;
-    const date = t.receivedAt || t.payDate || t.due || (t.doneAt ? t.doneAt.slice(0, 10) : null);
+    const date = t.receivedAt || taskPayDate(t);
     if (!date || monthOf(date) !== M) continue;
     items.push({
       key: `t:${t.id}`,
@@ -121,6 +133,7 @@ export function ledger(state, M) {
       amount: Number(t.value) || 0,
       settledAt: t.receivedAt || null,
       category: TASK_INCOME_CATEGORY,
+      payers: ownersOf({ owner: t.payer }),
       ref: { taskId: t.id },
     });
   }
