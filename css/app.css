@@ -869,7 +869,7 @@ a.tile:hover { border-color: var(--border-strong); }
   white-space: nowrap;
 }
 .shift-servico .cal-shift { background: var(--accent); color: #fff; }
-.shift-cobrindo .cal-shift { background: var(--c7); color: #fff; }
+.shift-cobrindo .cal-shift { background: var(--c7); color: #fff; white-space: normal; line-height: 1.15; text-overflow: clip; text-align: center; }
 .shift-coberto .cal-shift { background: var(--violet-soft); color: var(--violet-text); white-space: normal; line-height: 1.15; text-overflow: clip; text-align: center; }
 .cal-dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 8px; }
 .cal-more { font-size: 10px; line-height: 8px; color: var(--text-3); font-weight: 700; }

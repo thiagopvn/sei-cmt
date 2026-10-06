@@ -161,6 +161,19 @@ export function shiftsInRange(state, from, to) {
   return out.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
 }
 
+/** Nome curto do colega para espaços pequenos: "Sgt Silva" → "Silva". */
+export function shortName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  const n = parts.length > 1 ? parts[parts.length - 1] : parts[0] || '';
+  return n.length > 8 ? `${n.slice(0, 7)}.` : n;
+}
+
+/** Serviço de um colega que eu tiro: "Permuta do meu dia 16/10" (o meu dia que ele tira). */
+export function permutaDoMeuDia(sh) {
+  const d = sh.swap?.myDate;
+  return d ? `Permuta do meu dia ${fmtDM(d)}` : 'Permuta (meu dia a combinar)';
+}
+
 /**
  * Meu serviço que um colega tira: "Permutado para o dia 12/10" (o dia em que eu devolvo).
  * `short` gera a versão curta para o calendário do celular.
@@ -172,7 +185,7 @@ export function permutaLabel(sh, { short = false } = {}) {
 }
 
 export function shiftTitle(sh) {
-  if (sh.kind === 'cobrindo') return `Troca: tiro por ${sh.colleague}`;
+  if (sh.kind === 'cobrindo') return `Serviço de ${sh.colleague}`;
   if (sh.kind === 'coberto') return permutaLabel(sh);
   return SERVICE_TYPES[sh.type]?.label || 'Serviço';
 }

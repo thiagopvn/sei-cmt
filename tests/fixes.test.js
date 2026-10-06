@@ -96,3 +96,15 @@ test('serviço trocado aparece como "Permutado para o dia X"', async () => {
   const sh2 = shiftsInRange(s, '2026-10-01', '2026-10-31').find((x) => x.kind === 'coberto');
   assert.equal(shiftTitle(sh2), 'Permutado (data a combinar)');
 });
+
+test('serviço de colega mostra de quem é', async () => {
+  const { shiftsInRange, shiftTitle, shortName, permutaDoMeuDia } = await import('../js/domain/shifts.js');
+  const s = defaultState();
+  s.swaps = [{ id: 'w1', colleague: 'Sgt Silva', myDate: '2026-10-16', theirDate: '2026-10-19' }];
+  const sh = shiftsInRange(s, '2026-10-01', '2026-10-31').find((x) => x.kind === 'cobrindo');
+  assert.equal(shiftTitle(sh), 'Serviço de Sgt Silva');
+  assert.equal(permutaDoMeuDia(sh), 'Permuta do meu dia 16/10');
+  assert.equal(shortName('Sgt Silva'), 'Silva');
+  assert.equal(shortName('Cb Albuquerque'), 'Albuque.');
+  assert.equal(shortName('Pedro'), 'Pedro');
+});
