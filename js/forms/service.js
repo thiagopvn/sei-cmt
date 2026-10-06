@@ -168,20 +168,24 @@ function serviceOption(s) {
 
 /**
  * Com mais de um serviço no mesmo dia, pergunta qual deles foi trocado.
- * Os que já estão em outra troca aparecem marcados.
+ * Os que já estão em outra troca aparecem marcados (e o envio é bloqueado).
+ * `orphan`: a troca aponta um serviço que foi excluído ou mudou de dia; a opção
+ * "Nenhum" vem marcada para não prender a troca a outro serviço sem querer.
  */
-function servicePicker(state, date, selected, swapId) {
+function servicePicker(state, date, selected, swapId, { orphan = false } = {}) {
   const list = date ? servicesOn(state, date) : [];
-  if (list.length < 2) return '';
+  if (list.length < (orphan ? 1 : 2)) return '';
   const taken = swapsByService(state);
   // Numerados: dois serviços iguais (mesmo horário e local) também podem ser escolhidos.
   const opts = list.map((s, i) => {
     const other = taken.get(s.id);
     return { value: s.id, label: `${i + 1}º · ${serviceOption(s)}${other && other.id !== swapId ? ` (já permutado com ${other.colleague})` : ''}` };
   });
+  if (orphan) opts.unshift({ value: '', label: 'Nenhum (o serviço original foi excluído ou mudou de dia)' });
   const free = list.find((s) => !taken.get(s.id) || taken.get(s.id).id === swapId);
-  const value = list.some((s) => s.id === selected) ? selected : (free || list[0]).id;
-  return field('Qual serviço desse dia?', select('serviceId', opts, value), { hint: `Você tem ${list.length} serviços neste dia. Só o escolhido fica permutado.` });
+  const value = orphan && !list.some((s) => s.id === selected) ? '' : list.some((s) => s.id === selected) ? selected : (free || list[0]).id;
+  const hint = orphan ? 'Escolha o serviço deste dia que o militar vai tirar, se for o caso.' : `Você tem ${list.length} serviços neste dia. Só o escolhido fica permutado.`;
+  return field('Qual serviço desse dia?', select('serviceId', opts, value), { hint });
 }
 
 /** Registrar ou editar uma troca de serviço. */
@@ -192,6 +196,8 @@ export function openSwapForm({ swap = null, myDate = '', theirDate = '', service
   const w = swap || { colleague: '', myDate, theirDate, serviceId, start: def.start, hours: def.hours, notes: '', settled: false };
   // Troca antiga sem serviceId: parte do serviço que hoje aparece como permutado.
   const linkedId = w.serviceId || (swap ? [...swapsByService(state)].find(([, x]) => x.id === swap.id)?.[0] : null) || null;
+  // Troca que aponta um serviço excluído ou de outro dia: não troca de serviço sem o usuário escolher.
+  const orphan = !!(swap?.serviceId && swap.myDate && !state.services.some((x) => x.id === swap.serviceId && x.date === swap.myDate));
   const phone = state.colleagues.find((c) => c.name === w.colleague)?.phone || '';
   const body = `
     <p class="muted small">Uma troca tem dois lados. Preencha o que já estiver combinado; o outro pode ficar “a combinar”.</p>
@@ -202,7 +208,7 @@ export function openSwapForm({ swap = null, myDate = '', theirDate = '', service
         <span class="swap-leg-ic out">${icon('arrowUp', 16)}</span>
         ${field('Ele tira o MEU serviço em', input('myDate', w.myDate || '', 'type="date"'), { hint: 'Deixe vazio se ainda não foi combinado.' })}
       </div>
-      <div class="swap-svc">${servicePicker(state, w.myDate, linkedId, swap?.id)}</div>
+      <div class="swap-svc">${servicePicker(state, w.myDate, linkedId, swap?.id, { orphan })}</div>
       <div class="swap-leg">
         <span class="swap-leg-ic in">${icon('arrowDown', 16)}</span>
         ${field('Eu tiro o serviço DELE em', input('theirDate', w.theirDate || '', 'type="date"'), { hint: 'A devolução (ou o dia em que eu cubro).' })}
@@ -226,7 +232,9 @@ export function openSwapForm({ swap = null, myDate = '', theirDate = '', service
     onMount(el) {
       el.querySelector('[name="myDate"]').addEventListener('change', (e) => {
         const cur = el.querySelector('[name="serviceId"]')?.value || linkedId;
-        el.querySelector('.swap-svc').innerHTML = servicePicker(store.get(), e.target.value, cur, swap?.id);
+        // De volta ao dia original da troca órfã: oferece "Nenhum" de novo.
+        const again = orphan && e.target.value === swap.myDate;
+        el.querySelector('.swap-svc').innerHTML = servicePicker(store.get(), e.target.value, again ? linkedId : cur, swap?.id, { orphan: again });
       });
       el.querySelector('[data-delete]')?.addEventListener('click', async () => {
         if (await undoSwap(swap)) m.close();
@@ -241,11 +249,21 @@ export function openSwapForm({ swap = null, myDate = '', theirDate = '', service
         return false;
       }
       const name = fd.get('colleague').trim();
-      // Qual serviço foi trocado: o escolhido na lista ou o único serviço do dia.
-      const sameDay = my ? servicesOn(store.get(), my) : [];
-      const svc = sameDay.find((x) => x.id === fd.get('serviceId')) || (sameDay.length === 1 ? sameDay[0] : null);
+      // Qual serviço foi trocado: o escolhido na lista ou, sem lista, o único serviço do dia.
+      const st = store.get();
+      const sameDay = my ? servicesOn(st, my) : [];
+      const chosen = fd.get('serviceId');
+      const svc = chosen !== null ? sameDay.find((x) => x.id === chosen) || null : sameDay.length === 1 ? sameDay[0] : null;
+      const holder = svc && swapsByService(st).get(svc.id);
+      if (holder && holder.id !== swap?.id) {
+        form.querySelector('[name="serviceId"]')?.classList.add('invalid');
+        toast(`Esse serviço já está permutado com ${holder.colleague}. Desfaça aquela troca ou escolha outro serviço.`, { timeout: 6000 });
+        return false;
+      }
+      // "Nenhum" numa troca órfã: mantém a referência antiga em vez de deixá-la pegar outro serviço.
+      const keep = orphan && my === swap.myDate && (chosen === '' || chosen === null) ? swap.serviceId : null;
       const data = {
-        colleague: name, myDate: my, theirDate: their, serviceId: svc?.id || null, start: fd.get('start'), hours: Number(fd.get('hours')) || 24,
+        colleague: name, myDate: my, theirDate: their, serviceId: svc?.id || keep, start: fd.get('start'), hours: Number(fd.get('hours')) || 24,
         notes: fd.get('notes').trim(), settled: fd.get('settled') === 'on',
       };
       store.update((st) => {
