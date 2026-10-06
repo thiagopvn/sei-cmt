@@ -63,7 +63,16 @@ export const actions = {
     if (t) openTaskForm({ task: t, key: el.dataset.key });
   },
   'task-new'(el) {
-    openTaskForm({ defaults: { area: el.dataset.area || undefined, due: el.dataset.due || '' } });
+    openTaskForm({ defaults: { area: el.dataset.area || undefined, due: el.dataset.due || '', paid: !!el.dataset.paid } });
+  },
+  /** Tarefa remunerada: marca/desmarca o recebimento. */
+  'task-received'(el) {
+    store.update((s) => {
+      const t = s.tasks.find((x) => x.id === el.dataset.id);
+      if (t) t.receivedAt = t.receivedAt ? null : todayKey();
+    }, { undoable: true });
+    const t = findTask(el.dataset.id);
+    if (t?.receivedAt) toast('Pagamento marcado como recebido', { action: { label: 'Desfazer', onClick: () => store.undo() } });
   },
   'routine-new'(el) {
     openTaskForm({ defaults: { area: el.dataset.area || undefined, due: todayKey(), recurrence: { freq: 'daily' } } });

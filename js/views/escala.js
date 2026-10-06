@@ -1,9 +1,9 @@
-// Escala: serviços do mês, trocas com colegas e pagamentos de serviços extras.
+// Escala: serviços do mês, trocas com militares e pagamentos de serviços extras.
 
 import { esc, money, plural, sum } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addMonths, monthOf, monthStart, monthEnd, startOfWeek, addDays, fromKey, fmtShort, fmtDM, relDays, WEEKDAYS_SHORT, WEEKDAYS_MIN, hoursLabel, monthShortLabel, todayKey } from '../lib/dates.js';
-import { shiftsInRange, shiftTitle, permutaLabel, permutaDoMeuDia, shortName, ownerLabel, monthStats, swapStatus, swapBalance, SWAP_LABEL, pendingPayments, payStatus, PAY_LABEL } from '../domain/shifts.js';
+import { shiftsInRange, shiftTitle, permutaLabel, permutaDoMeuDia, shortName, ownerLabel, ownersOf, ownersShort, payerLabel, monthStats, swapStatus, swapBalance, SWAP_LABEL, pendingPayments, payStatus, PAY_LABEL } from '../domain/shifts.js';
 import { openShift } from '../actions.js';
 import { tile, monthNav, tabs, emptyState } from '../ui/parts.js';
 import { columns, bindCharts } from '../ui/charts.js';
@@ -16,21 +16,26 @@ let tab = 'servicos';
 function miniCalendar(state, M, shifts, today) {
   const ws = Number(state.settings.weekStart) || 0;
   const first = startOfWeek(monthStart(M), ws);
-  const byDate = new Map(shifts.map((s) => [s.date, s]));
+  const byDate = new Map();
+  for (const s of shifts) byDate.set(s.date, [...(byDate.get(s.date) || []), s]);
   const cells = Array.from({ length: 42 }, (_, i) => addDays(first, i)).filter((d, i) => i < 35 || monthOf(addDays(first, 35)) === M).map((d) => {
-    const sh = byDate.get(d);
+    const list = byDate.get(d) || [];
+    const sh = list[0];
     const out = monthOf(d) !== M;
-    return `<button type="button" class="mini-cell ${out ? 'out' : ''} ${d === today ? 'today' : ''} ${sh ? `shift-${sh.kind}${sh.kind === 'servico' && sh.paid ? ' shift-pago' : sh.kind === 'servico' && sh.owner ? ' shift-alheio' : ''}` : ''}"
+    const owners = sh?.kind === 'servico' ? ownersOf(sh) : [];
+    const more = list.length > 1 ? `<small class="mini-more">+${list.length - 1}</small>` : '';
+    return `<button type="button" class="mini-cell ${out ? 'out' : ''} ${d === today ? 'today' : ''} ${sh ? `shift-${sh.kind}${sh.kind === 'servico' && sh.paid ? ` shift-pago${sh.service?.receivedAt ? '' : ' a-receber'}` : owners.length ? ' shift-alheio' : ''}` : ''}"
       ${out ? 'tabindex="-1"' : ''} data-action="${sh ? 'es-open' : 'service-new'}" data-date="${esc(d)}" data-shift="${esc(sh ? sh.id : '')}"
-      aria-label="${fmtShort(d)}${sh ? `: ${esc(shiftTitle(sh))}` : ': sem serviço, toque para adicionar'}">${fromKey(d).getDate()}${sh?.kind === 'coberto' && sh.swap?.theirDate ? `<small class="mini-sub">p/ ${fmtDM(sh.swap.theirDate)}</small>` : ''}${sh?.kind === 'cobrindo' ? `<small class="mini-sub">${esc(shortName(sh.colleague))}</small>` : ''}${sh?.kind === 'servico' && (sh.paid || sh.owner) ? `<small class="mini-sub">${sh.paid ? icon('coins', 10) : ''}${sh.owner ? esc(shortName(sh.owner)) : ''}</small>` : ''}</button>`;
+      aria-label="${fmtShort(d)}${list.length ? `: ${esc(list.map(shiftTitle).join('; '))}` : ': sem serviço, toque para adicionar'}">${fromKey(d).getDate()}${sh?.kind === 'coberto' && sh.swap?.theirDate ? `<small class="mini-sub">p/ ${fmtDM(sh.swap.theirDate)}</small>` : ''}${sh?.kind === 'cobrindo' ? `<small class="mini-sub">${esc(shortName(sh.colleague))}</small>` : ''}${sh?.kind === 'servico' && owners.length ? `<small class="mini-sub">${esc(ownersShort(owners))}</small>` : ''}${more}</button>`;
   }).join('');
   return `<div class="mini-cal card">
     <div class="mini-head">${Array.from({ length: 7 }, (_, i) => `<span>${WEEKDAYS_MIN[(ws + i) % 7]}</span>`).join('')}</div>
     <div class="mini-body">${cells}</div>
     <div class="cal-legend">
       <span><span class="legend-sw shift-servico"></span>Meu serviço</span>
-      <span><span class="legend-sw shift-pago"></span>Pago</span>
-      <span><span class="legend-sw shift-cobrindo"></span>De colega (eu tiro)</span>
+      <span><span class="legend-sw shift-pago"></span>Extra recebido</span>
+      <span><span class="legend-sw shift-a-receber"></span>Extra a receber</span>
+      <span><span class="legend-sw shift-cobrindo"></span>De outro militar (eu tiro)</span>
       <span><span class="legend-sw shift-coberto"></span>Permutado</span>
     </div>
   </div>`;
@@ -50,7 +55,7 @@ function shiftRow(state, sh, today) {
     ? `<span class="pill pill-violet">${icon('swap', 13)}${esc(permutaDoMeuDia(sh))}</span>`
     : sh.kind === 'coberto' ? `<span class="pill pill-violet">${icon('swap', 13)}${esc(permutaLabel(sh))} · ${esc(sh.colleague)}</span>`
       : `<span class="meta">${icon('user', 13)}${esc(ownerLabel(sh))}</span>`;
-  return `<div class="row shift-row kind-${sh.kind}${sh.kind === 'servico' && sh.paid ? ' is-paid' : ''} ${sh.date < today ? 'is-past' : ''}" role="button" tabindex="0" data-action="es-open" data-shift="${esc(sh.id)}">
+  return `<div class="row shift-row kind-${sh.kind}${sh.kind === 'servico' && sh.paid ? ` is-paid${sh.service?.receivedAt ? '' : ' a-receber'}` : ''} ${sh.date < today ? 'is-past' : ''}" role="button" tabindex="0" data-action="es-open" data-shift="${esc(sh.id)}">
     <div class="date-block ${sh.date === today ? 'today' : ''}"><strong>${d.getDate()}</strong><span>${WEEKDAYS_SHORT[d.getDay()]}</span></div>
     <div class="row-main">
       <div class="row-title">${esc(sh.kind === 'cobrindo' ? shiftTitle(sh) : sh.kind === 'servico' ? shiftTitle(sh) : sh.service ? shiftTitle({ ...sh, kind: 'servico' }) : 'Serviço')}</div>
@@ -98,7 +103,7 @@ function swapsTab(state, today) {
   return `
     <div class="toolbar"><button type="button" class="btn btn-primary btn-sm" data-action="swap-new">${icon('plus', 16)}Registrar troca</button></div>
     ${balance.length ? `<section class="section">
-      <div class="section-head"><h2>Saldo com colegas</h2></div>
+      <div class="section-head"><h2>Saldo com militares</h2></div>
       <div class="balance">${balance.map((b) => {
         const ph = phone(b.colleague);
         const msg = b.devo ? `Oi, ${b.colleague}! Vamos combinar a data para eu devolver o serviço da troca?` : `Oi, ${b.colleague}! Vamos combinar a data da devolução do serviço da nossa troca?`;
@@ -117,6 +122,12 @@ function swapsTab(state, today) {
     ${done.length ? `<details class="section"><summary class="section-head"><h2>Quitadas</h2><span class="muted small">${done.length}</span></summary><div class="swaps">${done.map(swapCard).join('')}</div></details>` : ''}`;
 }
 
+/** Quem paga o extra (titulares do serviço). */
+function payer(s) {
+  const names = ownersOf(s);
+  return names.length ? `<span class="meta payer">${icon(names.length > 1 ? 'users' : 'user', 13)}${esc(payerLabel(names))}</span>` : '';
+}
+
 function paymentsTab(state, today) {
   const pend = pendingPayments(state, today);
   const late = pend.filter((p) => p.status === 'atrasado');
@@ -130,7 +141,7 @@ function paymentsTab(state, today) {
   const row = (p) => `<div class="row" role="button" tabindex="0" data-action="service-open" data-id="${esc(p.service.id)}">
     <div class="row-main">
       <div class="row-title">Serviço de ${fmtShort(p.service.date)}${p.service.unit ? ` · ${esc(p.service.unit)}` : ''}</div>
-      <div class="row-meta">${payPill(p.status)}<span class="meta">Previsão ${fmtDM(p.expected)}${p.status === 'atrasado' ? ` (${relDays(p.expected, today)})` : ''}</span></div>
+      <div class="row-meta">${payPill(p.status)}${payer(p.service)}<span class="meta">Previsão ${fmtDM(p.expected)}${p.status === 'atrasado' ? ` (${relDays(p.expected, today)})` : ''}</span></div>
     </div>
     <span class="amount">${money(p.service.value)}</span>
     <button type="button" class="btn btn-sm" data-action="service-received" data-id="${esc(p.service.id)}">${icon('check', 14)}Recebi</button>
@@ -149,7 +160,7 @@ function paymentsTab(state, today) {
     </section>
     ${received.length ? `<details class="section"><summary class="section-head"><h2>Recebidos</h2><span class="muted small">${received.length}</span></summary>
       <div class="list">${received.map((s) => `<div class="row" role="button" tabindex="0" data-action="service-open" data-id="${esc(s.id)}">
-        <div class="row-main"><div class="row-title">Serviço de ${fmtShort(s.date)}</div><div class="row-meta">${payPill('recebido')}<span class="meta">em ${fmtDM(s.receivedAt)}</span></div></div>
+        <div class="row-main"><div class="row-title">Serviço de ${fmtShort(s.date)}${s.unit ? ` · ${esc(s.unit)}` : ''}</div><div class="row-meta">${payPill('recebido')}${payer(s)}<span class="meta">em ${fmtDM(s.receivedAt)}</span></div></div>
         <span class="amount">${money(s.value)}</span></div>`).join('')}</div></details>` : ''}`;
 }
 
@@ -183,7 +194,7 @@ export default {
       <div class="tiles">
         ${tile('Serviços', String(st.count), { ic: 'shield', sub: hoursLabel(st.hours) + ' trabalhadas' })}
         ${tile('Extras pagos', money(st.paidTotal), { ic: 'coins', sub: st.paidCount ? `${money(st.received)} recebido` : 'Nenhum no mês' })}
-        ${tile('Trocas no mês', String(st.covered + st.covering), { ic: 'swap', sub: `${st.covered} permutados · ${st.covering} de colegas` })}
+        ${tile('Trocas no mês', String(st.covered + st.covering), { ic: 'swap', sub: `${st.covered} permutados · ${st.covering} de outros militares` })}
         ${tile('Saldo de trocas', owe || owed ? `${owe ? `−${owe}` : ''}${owe && owed ? ' / ' : ''}${owed ? `+${owed}` : ''}` : '0', { ic: 'users', sub: owe || owed ? `devo ${owe} · me devem ${owed}` : 'Tudo quitado', to: '#/escala?tab=trocas' })}
       </div>` : ''}
       ${tabs([['servicos', 'Serviços'], ['trocas', 'Trocas', owe + owed || ''], ['pagamentos', 'Pagamentos', lateCount || '']], tab, 'es-tab')}

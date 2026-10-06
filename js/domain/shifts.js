@@ -1,9 +1,10 @@
 // Escala de serviços, trocas e pagamentos de serviços.
 //
 // service = { id, date, start, hours, type, unit, owner, paid, value, payExpected, receivedAt, notes }
-//   owner: '' quando o serviço é meu; nome do colega quando tiro o serviço (ex.: extra) de outra pessoa
-// swap    = { id, colleague, myDate, theirDate, start, hours, notes, settled }
-//   myDate:    dia do MEU serviço que o colega tira por mim
+//   owner: '' quando o serviço é meu; nome do militar quando tiro o serviço (ex.: extra) de outra pessoa
+// swap    = { id, colleague, myDate, theirDate, serviceId, start, hours, notes, settled }
+//   myDate:    dia do MEU serviço que o militar tira por mim
+//   serviceId: qual serviço desse dia foi trocado (importa quando há mais de um no mesmo dia)
 //   theirDate: dia do serviço DELE que eu tiro (a devolução)
 
 import { addDays, addMonths, dateInMonth, diffDays, eachDay, monthOf, monthStart, monthEnd, toMin, nowMin, weekday, fmtDM } from '../lib/dates.js';
@@ -58,7 +59,7 @@ export const PAY_LABEL = { recebido: 'Recebido', atrasado: 'Pagamento atrasado',
 /**
  * Situação de uma troca:
  *  'quitada'  — os dois lados já aconteceram (ou marcada manualmente)
- *  'devo'     — o colega já tirou o meu serviço; ainda devo o dele
+ *  'devo'     — o militar já tirou o meu serviço; ainda devo o dele
  *  'me_devem' — eu já tirei o serviço dele; ele ainda me deve
  *  'agendada' — nenhum lado aconteceu ainda
  */
@@ -79,7 +80,7 @@ export const SWAP_LABEL = {
   agendada: 'Agendada',
 };
 
-/** Saldo de trocas por colega: quantos serviços eu devo e quantos me devem. */
+/** Saldo de trocas por militar: quantos serviços eu devo e quantos me devem. */
 export function swapBalance(swaps, today) {
   const map = new Map();
   for (const w of swaps) {
@@ -95,18 +96,52 @@ export function swapBalance(swaps, today) {
 }
 
 /**
+ * Liga cada troca a no máximo UM serviço (Map serviceId → troca). Com dois serviços no mesmo dia,
+ * só o serviço escolhido na troca fica permutado. Trocas antigas (sem serviceId) ficam com um
+ * serviço livre do dia, de preferência o meu serviço ordinário (nunca com todos).
+ */
+export function swapsByService(state) {
+  const byService = new Map();
+  const services = state.services || [];
+  const pending = [];
+  for (const w of state.swaps || []) {
+    if (!w.myDate) continue;
+    if (!w.serviceId) {
+      pending.push(w);
+      continue;
+    }
+    // Troca que aponta um serviço nunca pega outro: se ele foi excluído ou mudou de dia, a troca aparece sozinha.
+    const s = services.find((x) => x.id === w.serviceId && x.date === w.myDate);
+    if (s && !byService.has(s.id)) byService.set(s.id, w);
+  }
+  const rank = (s) => (s.owner ? 2 : 0) + (s.paid ? 1 : 0);
+  const order = (a, b) => rank(a) - rank(b) || String(a.start || '').localeCompare(String(b.start || ''))
+    || String(a.createdAt || '').localeCompare(String(b.createdAt || '')) || String(a.id).localeCompare(String(b.id));
+  pending.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  for (const w of pending) {
+    const s = services.filter((x) => x.date === w.myDate && !byService.has(x.id)).sort(order)[0];
+    if (s) byService.set(s.id, w);
+  }
+  return byService;
+}
+
+/** Serviços cadastrados em um dia, na ordem em que aparecem (para escolher qual foi trocado). */
+export const servicesOn = (state, date) => (state.services || []).filter((s) => s.date === date)
+  .sort((a, b) => String(a.start || '').localeCompare(String(b.start || '')) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+
+/**
  * Lista unificada de turnos em um intervalo, combinando serviços cadastrados e trocas.
- * kind: 'servico' (meu) | 'cobrindo' (tiro por um colega) | 'coberto' (colega tira o meu)
+ * kind: 'servico' (meu) | 'cobrindo' (tiro por um militar) | 'coberto' (militar tira o meu)
  */
 export function shiftsInRange(state, from, to) {
   const { settings } = state;
   const def = settings.service;
   const out = [];
-  const serviceDates = new Set();
+  const bySvc = swapsByService(state);
+  const linked = new Set(bySvc.values());
   for (const s of state.services) {
-    serviceDates.add(s.date);
     if (s.date < from || s.date > to) continue;
-    const swap = state.swaps.find((w) => w.myDate === s.date);
+    const swap = bySvc.get(s.id);
     out.push({
       id: s.id,
       date: s.date,
@@ -143,7 +178,7 @@ export function shiftsInRange(state, from, to) {
         value: 0,
       });
     }
-    if (w.myDate && w.myDate >= from && w.myDate <= to && !serviceDates.has(w.myDate)) {
+    if (w.myDate && w.myDate >= from && w.myDate <= to && !linked.has(w)) {
       out.push({
         id: `swap-out-${w.id}`,
         date: w.myDate,
@@ -164,21 +199,21 @@ export function shiftsInRange(state, from, to) {
   return out.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
 }
 
-/** Nome curto do colega para espaços pequenos: "Sgt Silva" → "Silva". */
+/** Nome curto do militar para espaços pequenos: "Sgt Silva" → "Silva". */
 export function shortName(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
   const n = parts.length > 1 ? parts[parts.length - 1] : parts[0] || '';
   return n.length > 8 ? `${n.slice(0, 7)}.` : n;
 }
 
-/** Serviço de um colega que eu tiro: "Troca referente ao dia 16/10" (o meu dia que ele tira). */
+/** Serviço de um militar que eu tiro: "Troca referente ao dia 16/10" (o meu dia que ele tira). */
 export function permutaDoMeuDia(sh) {
   const d = sh.swap?.myDate;
   return d ? `Troca referente ao dia ${fmtDM(d)}` : 'Troca (dia a combinar)';
 }
 
 /**
- * Meu serviço que um colega tira: "Permutado para o dia 12/10" (o dia em que eu devolvo).
+ * Meu serviço que um militar tira: "Permutado para o dia 12/10" (o dia em que eu devolvo).
  * `short` gera a versão curta para o calendário do celular.
  */
 export function permutaLabel(sh, { short = false } = {}) {
@@ -187,14 +222,34 @@ export function permutaLabel(sh, { short = false } = {}) {
   return d ? `Permutado para o dia ${fmtDM(d)}` : 'Permutado (data a combinar)';
 }
 
-/** De quem é o serviço que vou tirar: "Meu serviço" ou "De Sgt Silva". */
-export const ownerLabel = (sh) => (sh.owner ? `De ${sh.owner}` : 'Meu serviço');
+/**
+ * Titulares do serviço: "Sgt Silva, Cb Souza" → ['Sgt Silva', 'Cb Souza'].
+ * Não separa por " e " para não quebrar sobrenomes como "Souza e Silva".
+ */
+export function ownersOf(sh) {
+  return String(sh?.owner || '').split(/[,;/+]/).map((x) => x.trim()).filter(Boolean);
+}
+
+/** "Sgt Silva", "Sgt Silva e Cb Souza", "A, B e C". */
+export function ownersText(names) {
+  return names.length <= 1 ? names[0] || '' : `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}`;
+}
+
+/** Versão curta para o calendário do celular: "Silva/Souza". */
+export const ownersShort = (names) => names.map(shortName).join('/');
+
+/** Quem paga o extra (os titulares do serviço): "Paga: Sgt Silva" / "Pagam: Sgt Silva e Cb Souza". */
+export const payerLabel = (names) => (names.length ? `${names.length > 1 ? 'Pagam' : 'Paga'}: ${ownersText(names)}` : '');
+
+/** De quem é o serviço que vou tirar: "Meu serviço" ou "De Sgt Silva e Cb Souza". */
+export const ownerLabel = (sh) => (ownersOf(sh).length ? `De ${ownersText(ownersOf(sh))}` : 'Meu serviço');
 
 export function shiftTitle(sh) {
   if (sh.kind === 'cobrindo') return `Serviço de ${sh.colleague}`;
   if (sh.kind === 'coberto') return permutaLabel(sh);
   const label = SERVICE_TYPES[sh.type]?.label || 'Serviço';
-  return sh.owner ? `${label} de ${sh.owner}` : label;
+  const owners = ownersOf(sh);
+  return owners.length ? `${label} de ${ownersText(owners)}` : label;
 }
 
 /** Turno ativo cobrindo o momento atual (considera turnos que começaram ontem). */

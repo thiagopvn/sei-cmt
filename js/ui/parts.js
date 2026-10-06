@@ -2,15 +2,17 @@
 
 import { esc, money } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
-import { diffDays, fmtShort, monthLabel, relDays } from '../lib/dates.js';
+import { diffDays, fmtShort, fmtDM, monthLabel, relDays } from '../lib/dates.js';
 import { checklistFor, urgency } from '../domain/tasks.js';
 import { describeRule } from '../domain/recurrence.js';
+import { taskPayStatus } from '../domain/finance.js';
 
 export const areaOf = (state, id) => state.areas.find((a) => a.id === id) || null;
 export const typeOf = (state, id) => state.types.find((t) => t.id === id) || null;
 
-/** Cor de marcação: um slot da paleta (1–8) ou 'accent' (vermelho do brasão, usado nos serviços). */
-export const colorVar = (color) => (color === 'accent' ? 'var(--accent)' : color === 'swap' ? 'var(--swap-bg)' : color === 'paid' ? 'var(--paid-bg)' : `var(--c${Number(color) || 0})`);
+/** Cor de marcação: um slot da paleta (1–8), 'accent' (vermelho do brasão), 'swap', 'paid' (recebido) ou 'due' (a receber). */
+const NAMED = { accent: 'var(--accent)', swap: 'var(--swap-bg)', paid: 'var(--paid-bg)', due: 'var(--due-bg)' };
+export const colorVar = (color) => NAMED[color] || `var(--c${Number(color) || 0})`;
 
 export const dot = (color) => `<span class="dot" style="--c: ${colorVar(color)}"></span>`;
 
@@ -37,6 +39,16 @@ export function dueChip(inst, today) {
   }
 }
 
+/** Selo de pagamento de uma tarefa remunerada: recebido (verde), a receber (dourado) ou atrasado. */
+export function taskPayPill(t, today) {
+  const st = taskPayStatus(t, today);
+  if (!st) return '';
+  const v = money(t.value);
+  if (st === 'recebido') return `<span class="pill pill-good">${icon('check', 13)}${v} recebido</span>`;
+  if (st === 'atrasado') return `<span class="pill pill-critical">${icon('coins', 13)}${v} · pagamento atrasado</span>`;
+  return `<span class="pill pill-warning">${icon('coins', 13)}${v} a receber${t.payDate ? ` · ${fmtDM(t.payDate)}` : ''}</span>`;
+}
+
 export function taskRow(state, inst, today, { showArea = true, showDate = true } = {}) {
   const t = inst.task;
   const list = checklistFor(t, inst.key);
@@ -60,7 +72,7 @@ export function taskRow(state, inst, today, { showArea = true, showDate = true }
           ${showArea ? areaTag(state, t.area) : ''}
           ${list.length ? `<span class="meta">${icon('tasks', 13)}${doneCount}/${list.length}</span>` : ''}
           ${t.process ? `<span class="meta">nº ${esc(t.process)}</span>` : ''}
-          ${Number(t.value) > 0 ? `<span class="meta">${icon('coins', 13)}${money(t.value)}${t.receivedAt ? ' · recebido' : ''}</span>` : ''}
+          ${taskPayPill(t, today)}
         </div>
       </div>
       ${inst.done ? '' : `<button type="button" class="icon-btn timer-btn ${running ? 'on' : ''}" data-action="${running ? 'timer-stop' : 'timer-start'}" data-id="${esc(t.id)}"
@@ -111,7 +123,7 @@ export const LAYER_COLOR = { servico: 'accent', troca: 'swap', tarefa: 2, evento
 
 export function agendaItemRow(state, it) {
   const color = it.layer === 'servico'
-    ? (it.kind === 'servico' ? (it.ref.shift?.paid ? 'paid' : it.ref.shift?.owner ? 'swap' : LAYER_COLOR.servico) : LAYER_COLOR.troca)
+    ? (it.kind === 'servico' ? (it.ref.shift?.paid ? (it.ref.shift.service?.receivedAt ? 'paid' : 'due') : it.ref.shift?.owner ? 'swap' : LAYER_COLOR.servico) : LAYER_COLOR.troca)
     : it.layer === 'financa' ? LAYER_COLOR.financa : areaOf(state, it.area)?.color || LAYER_COLOR[it.layer];
   const checkable = !!it.ref.taskId || it.layer === 'financa';
   const checkAction = it.ref.taskId

@@ -1,12 +1,14 @@
-// Tarefas: demandas por área (sem misturar), quadro de status, rotinas e tempo dedicado.
+// Tarefas: demandas por área (sem misturar), quadro de status, rotinas, tempo dedicado e tarefas remuneradas.
 
 import { store } from '../store.js';
-import { esc, normalize, plural, uid, sum } from '../lib/util.js';
+import { esc, normalize, plural, uid, sum, money } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
-import { addDays, fmtShort, WEEKDAYS_MIN, weekday } from '../lib/dates.js';
+import { addDays, fmtShort, fmtDM, WEEKDAYS_MIN, weekday } from '../lib/dates.js';
 import { activeInstance, groupInstances, STATUS, streak, isDone } from '../domain/tasks.js';
 import { describeRule, occurrences } from '../domain/recurrence.js';
-import { taskRow, emptyState, tabs, chips, areaTag, dueChip } from '../ui/parts.js';
+import { taskRow, emptyState, tabs, chips, areaTag, dueChip, tile, taskPayPill } from '../ui/parts.js';
+import { taskPayDate, taskPayStatus } from '../domain/finance.js';
+import { ownersOf, payerLabel } from '../domain/shifts.js';
 import { quickAddHtml, bindQuickAdd } from '../ui/quickadd.js';
 import { hbars, columns, bindCharts } from '../ui/charts.js';
 import { actionSheet, toast } from '../ui/overlay.js';
@@ -83,6 +85,38 @@ function listView(state, today) {
         <summary class="section-head"><h2>Concluídas</h2><span class="muted small">${doneGroup.items.length}</span></summary>
         <div class="list">${doneGroup.items.slice(0, 30).map((i) => taskRow(state, i, today, { showArea: !ui.area })).join('')}</div>
       </details>` : ''}`;
+}
+
+/** Tarefas remuneradas (TCC, SEI pago, IPM…): o que falta receber e o que já recebi. */
+function paidView(state, today) {
+  const paid = filtered(state).filter((t) => Number(t.value) > 0);
+  const open = paid.filter((t) => !t.receivedAt).sort((a, b) => String(taskPayDate(a) || '9').localeCompare(String(taskPayDate(b) || '9')));
+  const late = open.filter((t) => taskPayStatus(t, today) === 'atrasado');
+  const got = paid.filter((t) => t.receivedAt).sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+  const row = (t) => {
+    const payers = ownersOf({ owner: t.payer });
+    // A data da previsão já aparece no selo "a receber · dd/mm"; aqui só quando o selo não mostra.
+    const st = taskPayStatus(t, today);
+    const when = t.receivedAt ? `em ${fmtDM(t.receivedAt)}` : st === 'pendente' && t.payDate ? '' : taskPayDate(t) ? `Previsão ${fmtDM(taskPayDate(t))}` : 'Sem previsão';
+    return `<div class="row" role="button" tabindex="0" data-action="task-open" data-id="${esc(t.id)}" data-key="once">
+      <div class="row-main">
+        <div class="row-title">${esc(t.title)}</div>
+        <div class="row-meta">${taskPayPill(t, today)}${payers.length ? `<span class="meta payer">${icon(payers.length > 1 ? 'users' : 'user', 13)}${esc(payerLabel(payers))}</span>` : ''}${when ? `<span class="meta">${when}</span>` : ''}${t.status === 'done' ? `<span class="meta">${icon('check', 13)}Tarefa concluída</span>` : ''}${!ui.area ? areaTag(state, t.area) : ''}</div>
+      </div>
+      ${t.receivedAt ? '' : `<button type="button" class="btn btn-sm" data-action="task-received" data-id="${esc(t.id)}">${icon('check', 14)}Recebi</button>`}
+    </div>`;
+  };
+  return `
+    <div class="toolbar"><button type="button" class="btn btn-primary btn-sm" data-action="task-new" data-paid="1" data-area="${esc(ui.area)}">${icon('plus', 16)}Nova tarefa remunerada</button></div>
+    ${paid.length ? `<div class="tiles">
+      ${tile('A receber', money(sum(open, (t) => t.value)), { ic: 'clock', sub: plural(open.length, 'tarefa', 'tarefas'), tone: late.length ? 'tone-critical' : '' })}
+      ${tile('Recebido', money(sum(got, (t) => t.value)), { ic: 'coins', sub: plural(got.length, 'tarefa', 'tarefas') })}
+    </div>
+    <section class="section"><div class="section-head"><h2>A receber</h2><span class="muted small">${open.length}</span></div>
+      ${open.length ? `<div class="list">${open.map(row).join('')}</div>` : emptyState('coins', 'Nada a receber', 'Todas as tarefas remuneradas já foram pagas.')}</section>
+    ${got.length ? `<details class="section"><summary class="section-head"><h2>Recebidas</h2><span class="muted small">${got.length}</span></summary>
+      <div class="list">${got.slice(0, 30).map(row).join('')}</div></details>` : ''}`
+    : emptyState('coins', 'Nenhuma tarefa remunerada', 'Orientação de TCC, SEI pago, IPM, sindicância… Marque “Tarefa remunerada” ao criar a tarefa para acompanhar o pagamento. Ela também entra em Finanças.')}`;
 }
 
 function boardView(state, today) {
@@ -194,10 +228,12 @@ export default {
     const counts = Object.fromEntries(state.areas.map((a) => [a.id, state.tasks.filter((t) => t.area === a.id && !t.recurrence && t.status !== 'done').length]));
     const areaItems = state.areas.map((a) => [a.id, `${a.name}${counts[a.id] ? ` · ${counts[a.id]}` : ''}`, a.color]);
     const area = state.areas.find((a) => a.id === ui.area);
+    const toReceive = state.tasks.filter((t) => Number(t.value) > 0 && !t.receivedAt).length;
     let body = '';
     if (ui.mode === 'quadro') body = boardView(state, today);
     else if (ui.mode === 'rotinas') body = routinesView(state, today);
     else if (ui.mode === 'tempo') body = timeView(state, today);
+    else if (ui.mode === 'remuneradas') body = paidView(state, today);
     else body = listView(state, today);
     return `
       <header class="page-head">
@@ -208,11 +244,18 @@ export default {
       </header>
       ${chips(areaItems, ui.area || null, 'tk-area', { all: 'Todas' })}
       ${quickAddHtml(area ? `Nova tarefa em ${area.name}… ex.: “Entregar trabalho dia 20”` : 'Ex.: Enviar SEI até sexta #sei !alta')}
-      ${tabs([['lista', 'Lista'], ['quadro', 'Quadro'], ['rotinas', 'Rotinas'], ['tempo', 'Tempo']], ui.mode, 'tk-mode')}
+      ${tabs([['lista', 'Lista'], ['quadro', 'Quadro'], ['rotinas', 'Rotinas'], ['tempo', 'Tempo'], ['remuneradas', 'Remuneradas', toReceive || '']], ui.mode, 'tk-mode')}
       <div class="view-body">${body}</div>`;
   },
   mount(el) {
     bindQuickAdd(el, { area: ui.area || null });
+    // Celular: a barra de abas rola; garante que a aba ativa (ex.: Remuneradas) fique à vista.
+    const bar = el.querySelector('.tabs');
+    const active = bar?.querySelector('.tab.active');
+    if (bar && active) {
+      const hidden = active.getBoundingClientRect().right - bar.getBoundingClientRect().right;
+      if (hidden > 0) bar.scrollLeft += hidden + 8;
+    }
     bindCharts(el);
     const s = el.querySelector('[data-search]');
     if (s) {

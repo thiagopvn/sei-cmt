@@ -4,6 +4,7 @@ import { esc, money, plural, sum } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addMonths, monthOf, fmtDM, fmtShort, relDays, todayKey } from '../lib/dates.js';
 import { monthSummary, openItems, invoice, cardUsed, expensesByCategory, incomeBySource } from '../domain/finance.js';
+import { payerLabel } from '../domain/shifts.js';
 import { tile, monthNav, tabs, emptyState, chips } from '../ui/parts.js';
 import { hbars } from '../ui/charts.js';
 import { openInvoice } from '../forms/finance.js';
@@ -30,7 +31,7 @@ function itemRow(it, today) {
         ${it.settledAt ? `<span class="pill pill-good">${icon('check', 13)}${it.kind === 'receita' ? 'Recebido' : 'Pago'} ${fmtDM(it.settledAt)}</span>`
           : late ? `<span class="pill pill-critical">${icon('alert', 13)}Venceu ${relDays(it.date, today)}</span>`
             : `<span class="meta">${it.date === today ? 'Hoje' : `${fmtShort(it.date)} · ${relDays(it.date, today)}`}</span>`}
-        <span class="meta">${esc(it.category)}</span>
+        ${it.payers?.length ? `<span class="meta payer">${icon(it.payers.length > 1 ? 'users' : 'user', 13)}${esc(payerLabel(it.payers))}</span>` : `<span class="meta">${esc(it.category)}</span>`}
         ${it.recurring ? `<span class="meta">${icon('repeat', 13)}${it.recurring === 'yearly' ? 'Anual' : 'Mensal'}</span>` : ''}
       </div>
     </div>

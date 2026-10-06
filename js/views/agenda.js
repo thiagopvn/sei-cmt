@@ -4,7 +4,7 @@ import { esc } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, fromKey, todayKey, fmtDM } from '../lib/dates.js';
 import { collectRange, conflicts, LAYERS } from '../domain/agenda.js';
-import { permutaLabel, permutaDoMeuDia, shiftTitle, shortName } from '../domain/shifts.js';
+import { permutaLabel, permutaDoMeuDia, shiftTitle, shortName, ownersOf, ownersText, payStatus } from '../domain/shifts.js';
 import { agendaItemRow, monthNav, tabs, emptyState, dot, colorVar, LAYER_COLOR } from '../ui/parts.js';
 import { rerender } from '../ui/bus.js';
 
@@ -43,44 +43,62 @@ function filters(state) {
   </div>`;
 }
 
+/** Etiqueta de um serviço no calendário: { cls, long, short, tip }. Nome em cima, detalhe pequeno embaixo. */
+function shiftPill(sh, state, today) {
+  if (sh.kind === 'cobrindo') {
+    const ref = `<small class="cal-ref">${icon('swap', 10)}${sh.swap?.myDate ? fmtDM(sh.swap.myDate) : 'troca'}</small>`;
+    return {
+      cls: 'k-cobrindo',
+      long: `Serviço de ${esc(sh.colleague)}${ref}`,
+      short: `${esc(shortName(sh.colleague))}${ref}`,
+      tip: `${shiftTitle(sh)} — ${permutaDoMeuDia(sh).toLowerCase()}`,
+    };
+  }
+  if (sh.kind === 'coberto') {
+    return { cls: 'k-coberto', long: esc(permutaLabel(sh)), short: esc(permutaLabel(sh, { short: true })), tip: shiftTitle(sh) };
+  }
+  // Serviço pago (extra): verde com ✓ quando já recebi, dourado enquanto está a receber (⚠ se atrasou).
+  // Serviço de outro(s) militar(es): mostra os nomes.
+  const owners = ownersOf(sh);
+  const status = sh.paid && sh.service ? payStatus(sh.service, today, state.settings) : null;
+  const mark = status === 'recebido' ? icon('check', 10) : status === 'atrasado' ? icon('alert', 10) : '';
+  const hrs = `${sh.paid ? icon('coins', 10) : ''}${sh.hours}h${mark}`;
+  const ref = `<small class="cal-ref">${hrs}</small>`;
+  // No celular a cor já diz que é pago: sem a moeda, para caber o nome.
+  const refShort = `<small class="cal-ref">${sh.hours}h${mark}</small>`;
+  const namesShort = owners.map((n) => `<span class="nm">${esc(shortName(n))}</span>`).join('');
+  const word = sh.paid ? 'Extra' : 'Serviço';
+  const cls = `k-servico${sh.paid ? ` is-pago${status === 'recebido' ? '' : ' a-receber'}` : owners.length ? ' is-alheio' : ''}`;
+  const pay = sh.paid ? ` (${status === 'recebido' ? 'recebido' : status === 'atrasado' ? 'pagamento atrasado' : 'a receber'})` : '';
+  if (owners.length) {
+    return {
+      cls,
+      long: `${word} de ${esc(ownersText(owners))}${ref}`,
+      short: `${namesShort}${refShort}`,
+      tip: `${word} de ${ownersText(owners)}${pay} · ${sh.hours}h`,
+    };
+  }
+  return sh.paid
+    ? { cls, long: `Extra${ref}`, short: `${sh.hours}h${mark}`, tip: `Extra${pay} · ${sh.hours}h` }
+    : { cls, long: `Meu serviço${ref}`, short: `${sh.hours}h`, tip: `Meu serviço · ${sh.hours}h` };
+}
+
 function cellHtml(state, d, items, today, M) {
-  const shift = items.find((i) => i.layer === 'servico');
+  const shifts = items.filter((i) => i.layer === 'servico').map((i) => i.ref.shift);
   const others = items.filter((i) => i.layer !== 'servico');
   const dots = others.slice(0, 4).map((i) => {
     const color = i.layer === 'financa' ? LAYER_COLOR.financa : state.areas.find((a) => a.id === i.area)?.color || LAYER_COLOR[i.layer];
     return `<span class="dot ${i.done ? 'hollow' : ''}" style="--c: ${colorVar(color)}"></span>`;
   }).join('');
-  const sh = shift?.ref.shift;
-  // Serviço de colega: nome + linha discreta com o dia da troca ("⇄ 16/10").
-  const swapRef = sh?.kind === 'cobrindo'
-    ? `<small class="cal-ref">${icon('swap', 10)}${sh.swap?.myDate ? fmtDM(sh.swap.myDate) : 'troca'}</small>` : '';
-  // Serviço pago (extra/RAS): verde, com moeda; ✓ quando já recebi.
-  // Serviço de outra pessoa (titular): mostra o nome; sem pagamento, em grafite.
-  const paid = sh?.kind === 'servico' && sh.paid;
-  const alheio = sh?.kind === 'servico' && !!sh.owner;
-  const received = paid && sh.service?.receivedAt ? icon('check', 10) : '';
-  const hrs = `${paid ? icon('coins', 10) : ''}${sh?.hours}h${received}`;
-  // Nome em cima e horas numa linha pequena embaixo (como na troca).
-  const servicoLabel = () => {
-    const ref = `<small class="cal-ref">${hrs}</small>`;
-    if (alheio) return [`${paid ? 'Extra' : 'Serviço'} de ${esc(sh.owner)}${ref}`, `${esc(shortName(sh.owner))}${ref}`];
-    return paid ? [`Meu extra${ref}`, hrs] : [`Meu serviço${ref}`, `${sh.hours}h`];
-  };
-  const shiftLabel = shift
-    ? {
-      servico: shift.kind === 'servico' ? servicoLabel() : null,
-      cobrindo: [`Serviço de ${esc(sh.colleague)}${swapRef}`, `${esc(shortName(sh.colleague))}${swapRef}`],
-      coberto: [esc(permutaLabel(sh)), esc(permutaLabel(sh, { short: true }))],
-    }[shift.kind]
-    : null;
-  const shiftTip = !sh ? ''
-    : sh.kind === 'cobrindo' ? `${shiftTitle(sh)} — ${permutaDoMeuDia(sh).toLowerCase()}`
-      : sh.kind === 'servico' ? `${alheio ? `${paid ? 'Extra' : 'Serviço'} de ${sh.owner}` : paid ? 'Meu extra' : 'Meu serviço'}${paid ? ` (pago, ${sh.service?.receivedAt ? 'recebido' : 'a receber'})` : ''} · ${sh.hours}h`
-        : shiftTitle(sh);
-  return `<button type="button" class="cal-cell ${monthOf(d) !== M ? 'out' : ''} ${d === today ? 'today' : ''} ${d === selected ? 'selected' : ''} ${shift ? `has-shift shift-${shift.kind}${paid ? ' shift-pago' : alheio ? ' shift-alheio' : ''}` : ''}"
-    data-action="ag-select" data-date="${esc(d)}" aria-label="${fmtLong(d)}${shiftTip ? `, ${esc(shiftTip)}` : ''}${items.length ? `, ${items.length} itens` : ''}" aria-pressed="${d === selected}">
+  // Mais de um serviço no dia: mostra até dois e "+N".
+  const pills = shifts.map((sh) => shiftPill(sh, state, today));
+  const shown = pills.slice(0, 2).map((p) => `<span class="cal-shift ${p.cls}" title="${esc(p.tip)}"><span class="lbl-long">${p.long}</span><span class="lbl-short">${p.short}</span></span>`).join('')
+    + (pills.length > 2 ? `<span class="cal-more-shift">+${pills.length - 2}</span>` : '');
+  const tips = pills.map((p) => p.tip).join('; ');
+  return `<button type="button" class="cal-cell ${monthOf(d) !== M ? 'out' : ''} ${d === today ? 'today' : ''} ${d === selected ? 'selected' : ''} ${shifts.length ? 'has-shift' : ''}"
+    data-action="ag-select" data-date="${esc(d)}" aria-label="${fmtLong(d)}${tips ? `, ${esc(tips)}` : ''}${items.length ? `, ${items.length} itens` : ''}" aria-pressed="${d === selected}">
     <span class="cal-num">${fromKey(d).getDate()}</span>
-    ${shift ? `<span class="cal-shift" title="${esc(shiftTip)}"><span class="lbl-long">${shiftLabel[0]}</span><span class="lbl-short">${shiftLabel[1]}</span></span>` : ''}
+    ${shown}
     <span class="cal-dots">${dots}${others.length > 4 ? '<span class="cal-more">+</span>' : ''}</span>
     <span class="cal-items">${others.slice(0, 3).map((i) => `<span class="cal-item ${i.done ? 'is-done' : ''}">${i.time ? `${i.time} ` : ''}${esc(i.title)}</span>`).join('')}${others.length > 3 ? `<span class="cal-item muted">+${others.length - 3}</span>` : ''}</span>
   </button>`;
@@ -137,9 +155,10 @@ export default {
           <div class="cal-body">${cells}</div>
           <div class="cal-legend">
             <span><span class="legend-sw shift-servico"></span>Meu serviço</span>
-            <span><span class="legend-sw shift-pago"></span>Pago (extra)</span>
-            <span><span class="legend-sw shift-cobrindo"></span>Serviço de colega (eu tiro)</span>
-            <span><span class="legend-sw shift-coberto"></span>Permutado (colega tira)</span>
+            <span><span class="legend-sw shift-pago"></span>Extra recebido</span>
+            <span><span class="legend-sw shift-a-receber"></span>Extra a receber</span>
+            <span><span class="legend-sw shift-cobrindo"></span>Serviço de outro militar (eu tiro)</span>
+            <span><span class="legend-sw shift-coberto"></span>Permutado (outro militar tira)</span>
           </div>
         </div>
         ${dayPanel(state, selected, selItems, today)}

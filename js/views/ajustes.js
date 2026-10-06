@@ -1,4 +1,4 @@
-// Ajustes: perfil, aparência, lembretes, escala, áreas, modelos de demanda, categorias, colegas e dados.
+// Ajustes: perfil, aparência, lembretes, escala, áreas, modelos de demanda, categorias, militares e dados.
 
 import { store, AREA_SLOTS, NO_ALERTS } from '../store.js';
 import { esc, uid, moneyInput, parseMoney, normalize } from '../lib/util.js';
@@ -121,7 +121,7 @@ export default {
 
     return `
       <header class="page-head"><h1>Ajustes</h1></header>
-      <nav class="settings-nav chips">${[['conta', 'Conta'], ['perfil', 'Perfil'], ['lembretes', 'Lembretes'], ['escala-cfg', 'Escala'], ['areas', 'Áreas'], ['modelos', 'Modelos'], ['financas-cfg', 'Finanças'], ['colegas', 'Colegas'], ['dados', 'Backup'], ['instalar', 'Instalar']].map(([id, l]) => `<a class="chip" href="#/ajustes" data-action="aj-jump" data-to="${id}">${l}</a>`).join('')}</nav>
+      <nav class="settings-nav chips">${[['conta', 'Conta'], ['perfil', 'Perfil'], ['lembretes', 'Lembretes'], ['escala-cfg', 'Escala'], ['areas', 'Áreas'], ['modelos', 'Modelos'], ['financas-cfg', 'Finanças'], ['militares', 'Militares'], ['dados', 'Backup'], ['instalar', 'Instalar']].map(([id, l]) => `<a class="chip" href="#/ajustes" data-action="aj-jump" data-to="${id}">${l}</a>`).join('')}</nav>
       <div class="settings">
         ${section('conta', 'cloud', 'Conta e nuvem', account)}
         ${section('perfil', 'user', 'Perfil e aparência', `
@@ -189,13 +189,13 @@ export default {
             ${field('Despesas (uma por linha)', `<textarea rows="5" data-list="expenseCategories">${esc(s.expenseCategories.join('\n'))}</textarea>`)}
           </div>`)}
 
-        ${section('colegas', 'users', 'Colegas (para trocas)', state.colleagues.length ? `
+        ${section('militares', 'users', 'Militares (trocas e extras)', state.colleagues.length ? `
           <div class="list edit-list">${state.colleagues.map((c) => `
             <div class="edit-row" data-colleague="${esc(c.id)}">
               <input value="${esc(c.name)}" data-col-name aria-label="Nome" maxlength="40">
               <input value="${esc(c.phone || '')}" data-col-phone type="tel" inputmode="tel" placeholder="WhatsApp" aria-label="Telefone">
               <button type="button" class="icon-btn" data-action="aj-col-del" data-id="${esc(c.id)}" aria-label="Remover">${icon('trash', 16)}</button>
-            </div>`).join('')}</div>` : '<p class="muted small">Os colegas aparecem aqui quando você registra trocas.</p>')}
+            </div>`).join('')}</div>` : '<p class="muted small">Os militares aparecem aqui quando você registra trocas ou serviços de outros militares.</p>')}
 
         ${section('dados', 'download', 'Backup e dados', `
           <p class="muted small">${ci.user ? 'Seus dados já estão na nuvem. O backup em arquivo é uma cópia extra, se quiser guardar.' : 'Sem conta, seus dados ficam só neste aparelho. Faça backup com frequência e guarde o arquivo no Drive ou no WhatsApp.'}

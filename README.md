@@ -13,7 +13,7 @@ Aplicativo (PWA) para organizar a vida pessoal e profissional em um só lugar: *
 **Escala**
 - Gerador automático: 24×72, 24×48, 24×96, 12×36, 12×60, dias fixos da semana ou a cada N dias.
 - Serviços ordinários, extras pagos (com valor), sobreaviso e outros.
-- **Trocas**: quem tira o seu serviço e quando você devolve (ou “a combinar”); saldo por colega (quem deve a quem) e botão para conversar no WhatsApp.
+- **Trocas**: quem tira o seu serviço e quando você devolve (ou “a combinar”); saldo por militar (quem deve a quem) e botão para conversar no WhatsApp.
 - **Pagamentos**: previsão de pagamento de cada serviço extra, avisos de pagamento atrasado e botão “Recebi”.
 
 **Finanças**
@@ -35,7 +35,7 @@ Aplicativo (PWA) para organizar a vida pessoal e profissional em um só lugar: *
 
 **Ajustes**
 - Lembretes (horário, antecedência de prazos, contas e serviços), notificações do celular, tema claro/escuro.
-- Regras de pagamento dos serviços extras, áreas, modelos, categorias financeiras, contatos de colegas.
+- Regras de pagamento dos serviços extras, áreas, modelos, categorias financeiras, contatos dos militares.
 - **Backup** (exportar/restaurar arquivo) e dados de exemplo.
 
 ## Conta e nuvem (Firebase)

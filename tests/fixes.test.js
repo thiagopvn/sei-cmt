@@ -122,3 +122,57 @@ test('serviço mostra o titular (meu ou de colega), inclusive extra pago', async
   assert.equal(shiftTitle(extra), 'Serviço extra (pago) de Sd Pereira');
   assert.equal(migrate(s).services[1].owner, 'Sd Pereira');
 });
+
+test('dois serviços no mesmo dia: a troca permuta só um deles', async () => {
+  const { shiftsInRange, swapsByService } = await import('../js/domain/shifts.js');
+  const s = defaultState();
+  // Dois serviços idênticos no dia 31 e uma troca antiga (sem serviceId) para o dia 24.
+  s.services = [
+    { id: 'a', date: '2026-10-31', start: '08:00', hours: 24, type: 'ordinario', unit: 'QCG' },
+    { id: 'b', date: '2026-10-31', start: '08:00', hours: 24, type: 'ordinario', unit: 'QCG' },
+  ];
+  s.swaps = [{ id: 'w1', colleague: 'Cap Diogo Dias', myDate: '2026-10-31', theirDate: '2026-10-24' }];
+  const day = () => shiftsInRange(s, '2026-10-31', '2026-10-31').map((x) => `${x.id}:${x.kind}`).sort();
+  assert.deepEqual(day(), ['a:coberto', 'b:servico']);
+  // Troca que aponta o serviço "b": só ele fica permutado.
+  s.swaps[0].serviceId = 'b';
+  assert.deepEqual(day(), ['a:servico', 'b:coberto']);
+  assert.equal(swapsByService(s).get('b').id, 'w1');
+  // Duas trocas no mesmo dia, uma para cada serviço.
+  s.swaps.push({ id: 'w2', colleague: 'Sgt Silva', myDate: '2026-10-31', theirDate: '2026-11-02' });
+  assert.deepEqual(day(), ['a:coberto', 'b:coberto']);
+  // Serviço apontado foi excluído: a troca aparece sozinha e não pega o outro serviço.
+  s.swaps = [{ id: 'w1', colleague: 'Cap Diogo Dias', myDate: '2026-10-31', theirDate: '2026-10-24', serviceId: 'x' }];
+  assert.deepEqual(day(), ['a:servico', 'b:servico', 'swap-out-w1:coberto']);
+  assert.equal(migrate(s).swaps[0].serviceId, 'x');
+});
+
+test('extra pode ser de mais de um militar', async () => {
+  const { ownersOf, ownersText, ownersShort, shiftsInRange, shiftTitle } = await import('../js/domain/shifts.js');
+  assert.deepEqual(ownersOf({ owner: 'Sgt Silva, Cb Souza' }), ['Sgt Silva', 'Cb Souza']);
+  assert.deepEqual(ownersOf({ owner: 'Sd Souza e Silva' }), ['Sd Souza e Silva']);
+  assert.equal(ownersText(['Sgt Silva', 'Cb Souza']), 'Sgt Silva e Cb Souza');
+  assert.equal(ownersText(['A', 'B', 'C']), 'A, B e C');
+  assert.equal(ownersShort(['Sgt Silva', 'Cb Souza']), 'Silva/Souza');
+  const s = defaultState();
+  s.services = [{ id: 's1', date: '2026-10-09', start: '08:00', hours: 24, type: 'extra', paid: true, owner: 'Sgt Silva, Cb Souza' }];
+  assert.equal(shiftTitle(shiftsInRange(s, '2026-10-01', '2026-10-31')[0]), 'Serviço extra (pago) de Sgt Silva e Cb Souza');
+});
+
+test('tarefa remunerada entra em Finanças com quem paga e situação do pagamento', async () => {
+  const { ledger, taskPayStatus, setSettled } = await import('../js/domain/finance.js');
+  const s = defaultState();
+  s.tasks = [
+    { id: 't1', title: 'Orientação de TCC', value: 500, payDate: '2026-10-20', payer: 'Aluno João', status: 'todo' },
+    { id: 't2', title: 'SEI pago', value: 300, payDate: '2026-10-01', status: 'done' },
+    { id: 't3', title: 'IPM sem data', value: 200, createdAt: '2026-10-03T12:00:00.000Z', status: 'todo' },
+  ];
+  assert.equal(taskPayStatus(s.tasks[0], '2026-10-06'), 'pendente');
+  assert.equal(taskPayStatus(s.tasks[1], '2026-10-06'), 'atrasado');
+  const items = ledger(s, '2026-10').filter((i) => i.source === 'task');
+  assert.deepEqual(items.map((i) => i.ref.taskId).sort(), ['t1', 't2', 't3']);
+  assert.deepEqual(items.find((i) => i.ref.taskId === 't1').payers, ['Aluno João']);
+  setSettled(s, items.find((i) => i.ref.taskId === 't1'), '2026-10-06');
+  assert.equal(taskPayStatus(s.tasks[0], '2026-10-06'), 'recebido');
+  assert.equal(migrate(s).tasks[0].payer, 'Aluno João');
+});
