@@ -35,8 +35,9 @@
   --violet-text: #3f3c3a;
   --swap-bg: #363535;
   --swap-fg: #ffffff;
-  /* Serviço pago (extra/RAS): verde, a cor do dinheiro */
+  /* Serviço pago (extra/RAS): verde quando já recebi, dourado enquanto está a receber */
   --paid-bg: #15803d;
+  --due-bg: #a16207;
   --c0: #98a2b3;
   --c1: #2a78d6;
   --c2: #eb6834;
@@ -89,6 +90,7 @@
     --swap-bg: #d9d6d3;
     --swap-fg: #1c1a19;
     --paid-bg: #17803f;
+    --due-bg: #a16207;
     --c0: #5d6676;
     --c1: #3987e5;
     --c2: #d95926;
@@ -134,6 +136,7 @@
   --swap-bg: #d9d6d3;
   --swap-fg: #1c1a19;
   --paid-bg: #17803f;
+  --due-bg: #a16207;
   --c0: #5d6676;
   --c1: #3987e5;
   --c2: #d95926;
@@ -503,6 +506,7 @@ a.tile:hover { border-color: var(--border-strong); }
   color: var(--text-3);
   font-size: 12.5px;
 }
+.meta.payer { color: var(--text-2); font-weight: 600; }
 .is-done .row-title { color: var(--text-3); text-decoration: line-through; text-decoration-color: var(--border-strong); }
 .amount { font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 14px; }
 .amount.receita { color: var(--good-text); }
@@ -879,13 +883,19 @@ a.tile:hover { border-color: var(--border-strong); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.shift-servico .cal-shift { background: var(--accent); color: #fff; }
-.shift-pago .cal-shift, .shift-alheio .cal-shift { white-space: normal; line-height: 1.15; text-overflow: clip; text-align: center; }
-.shift-pago .cal-shift { background: var(--paid-bg); }
-.shift-alheio .cal-shift { background: var(--swap-bg); color: var(--swap-fg); }
+.cal-shift.k-servico { background: var(--accent); color: #fff; }
+.cal-shift.is-pago, .cal-shift.is-alheio { white-space: normal; line-height: 1.15; text-overflow: clip; text-align: center; }
+.cal-shift.is-pago { background: var(--paid-bg); }
+.cal-shift.is-pago.a-receber { background: var(--due-bg); }
+.cal-shift.is-alheio { background: var(--swap-bg); color: var(--swap-fg); }
+.cal-more-shift { font-size: 10px; font-weight: 700; color: var(--text-3); }
+/* Celular: um nome por linha; nome comprido termina em reticências em vez de vazar */
+.cal-shift .nm { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-shift .cal-ref { white-space: nowrap; }
+@media (max-width: 1099px) { .cal-shift { padding: 1px 3px; } }
 .cal-shift .ic { display: inline-block; vertical-align: -1px; width: 10px; height: 10px; margin: 0 1px; }
-.shift-cobrindo .cal-shift { background: var(--swap-bg); color: var(--swap-fg); white-space: normal; line-height: 1.15; text-overflow: clip; text-align: center; }
-.shift-coberto .cal-shift { background: var(--violet-soft); color: var(--violet-text); white-space: normal; line-height: 1.15; text-overflow: clip; text-align: center; }
+.cal-shift.k-cobrindo { background: var(--swap-bg); color: var(--swap-fg); white-space: normal; line-height: 1.15; text-overflow: clip; text-align: center; }
+.cal-shift.k-coberto { background: var(--violet-soft); color: var(--violet-text); white-space: normal; line-height: 1.15; text-overflow: clip; text-align: center; }
 .cal-dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 8px; }
 .cal-more { font-size: 10px; line-height: 8px; color: var(--text-3); font-weight: 700; }
 .cal-items { display: none; }
@@ -897,6 +907,7 @@ a.tile:hover { border-color: var(--border-strong); }
 .legend-sw { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
 .legend-sw.shift-servico { background: var(--accent); }
 .legend-sw.shift-pago { background: var(--paid-bg); }
+.legend-sw.shift-a-receber { background: var(--due-bg); }
 .legend-sw.shift-cobrindo { background: var(--swap-bg); }
 .legend-sw.shift-coberto { background: var(--violet-soft); box-shadow: inset 0 0 0 1px var(--violet-text); }
 
@@ -1012,12 +1023,15 @@ a.tile:hover { border-color: var(--border-strong); }
 .mini-cell.today { box-shadow: inset 0 0 0 2px var(--accent); color: var(--accent-text); }
 .mini-cell.shift-servico { background: var(--accent); color: #fff; }
 .mini-cell.shift-pago { background: var(--paid-bg); }
+.mini-cell.shift-pago.a-receber { background: var(--due-bg); }
 .mini-cell.shift-alheio { background: var(--swap-bg); color: var(--swap-fg); }
 .mini-sub .ic { display: inline-block; }
 .mini-cell.shift-cobrindo { background: var(--swap-bg); color: var(--swap-fg); }
 .mini-cell.shift-coberto { background: var(--violet-soft); color: var(--violet-text); box-shadow: inset 0 0 0 1px var(--violet-text); }
 .mini-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; line-height: 1.1; }
-.mini-sub { font-size: 9.5px; font-weight: 700; white-space: nowrap; }
+.mini-sub { font-size: 9.5px; font-weight: 700; white-space: nowrap; max-width: 100%; padding: 0 2px; overflow: hidden; text-overflow: ellipsis; }
+.mini-cell { position: relative; }
+.mini-more { position: absolute; top: 2px; right: 4px; font-size: 9px; font-weight: 800; line-height: 1; opacity: .9; }
 
 .date-block {
   width: 46px;
@@ -1033,6 +1047,7 @@ a.tile:hover { border-color: var(--border-strong); }
 .date-block.today span { color: rgba(255, 255, 255, .85); }
 .shift-row.kind-servico .date-block:not(.today) { box-shadow: inset 3px 0 0 var(--accent); }
 .shift-row.kind-servico.is-paid .date-block:not(.today) { box-shadow: inset 3px 0 0 var(--paid-bg); }
+.shift-row.kind-servico.is-paid.a-receber .date-block:not(.today) { box-shadow: inset 3px 0 0 var(--due-bg); }
 .shift-row.kind-cobrindo .date-block:not(.today) { box-shadow: inset 3px 0 0 var(--swap-bg); }
 .shift-row.is-past { opacity: .78; }
 
@@ -1465,3 +1480,5 @@ body.auth-screen { padding-bottom: 24px; }
 /* Faixa grafite (fundo do brasão) atrás do cartão de entrada */
 body.auth-screen { background: linear-gradient(180deg, var(--brand-dark) 0, var(--brand-dark) 280px, var(--bg) 280px); }
 body.auth-screen .auth-local { color: var(--text-3); }
+.swap-svc:not(:empty) { padding-left: 42px; }
+.notice-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }

@@ -9,7 +9,7 @@
 
 import { addMonths, dateInMonth, fromKey, monthDiff, monthOf, addDays } from '../lib/dates.js';
 import { sum } from '../lib/util.js';
-import { expectedPayDate } from './shifts.js';
+import { expectedPayDate, ownersOf } from './shifts.js';
 
 export const SERVICE_INCOME_CATEGORY = 'Serviço extra';
 export const TASK_INCOME_CATEGORY = 'Trabalhos (TCC, IPM…)';
@@ -104,6 +104,7 @@ export function ledger(state, M) {
       amount: Number(s.value) || 0,
       settledAt: s.receivedAt || null,
       category: SERVICE_INCOME_CATEGORY,
+      payers: ownersOf(s),
       ref: { serviceId: s.id },
     });
   }

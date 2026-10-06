@@ -5,7 +5,7 @@ import { addDays, fmtDM, fromKey, toMin, relDays, todayKey } from './lib/dates.j
 import { money } from './lib/util.js';
 import { activeInstance } from './domain/tasks.js';
 import { eventInstances } from './domain/events.js';
-import { shiftsInRange } from './domain/shifts.js';
+import { shiftsInRange, ownersOf, ownersText } from './domain/shifts.js';
 import { openItems } from './domain/finance.js';
 import { toast } from './ui/overlay.js';
 
@@ -94,7 +94,7 @@ export function buildAlarms(state, now = new Date()) {
   const before = Number(s.serviceAlertHours) || 12;
   for (const sh of shiftsInRange(state, today, addDays(today, 2))) {
     if (!sh.active) continue;
-    const label = sh.owner ? `Serviço de ${sh.owner} (você tira)` : 'Você está de serviço (meu serviço)';
+    const label = sh.owner ? `Serviço de ${ownersText(ownersOf(sh))} (você tira)` : 'Você está de serviço (meu serviço)';
     alarms.push({ key: `s:${sh.id}:${sh.date}`, when: at(sh.date, sh.start) - before * 3600000, title: label, body: `${relDays(sh.date, today)} (${fmtDM(sh.date)}) às ${sh.start} · ${sh.hours}h${sh.unit ? ` · ${sh.unit}` : ''}` });
   }
 
