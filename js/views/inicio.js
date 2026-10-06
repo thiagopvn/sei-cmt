@@ -3,7 +3,7 @@
 import { esc, money, plural, sum } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addDays, fmtLong, fmtShort, monthOf, relDays, toMin, fromMin, hoursLabel } from '../lib/dates.js';
-import { onDutyNow, nextShift, shiftsInRange, monthStats } from '../domain/shifts.js';
+import { onDutyNow, nextShift, shiftsInRange, monthStats, permutaLabel } from '../domain/shifts.js';
 import { collectRange, conflicts } from '../domain/agenda.js';
 import { radar } from '../domain/insights.js';
 import { openItems } from '../domain/finance.js';
@@ -29,18 +29,18 @@ function statusCard(state, today) {
     const endDay = addDays(duty.date, Math.floor((toMin(duty.start) + duty.hours * 60) / 1440));
     return `<div class="status-card on-duty">
       <span class="status-ic">${icon('shield', 22)}</span>
-      <div><strong>${duty.kind === 'cobrindo' ? `De serviço (troca com ${esc(duty.colleague)})` : 'Você está de serviço'}</strong>
+      <div><strong>${duty.owner ? `De serviço — serviço de ${esc(duty.owner)}` : 'Você está de serviço — meu serviço'}</strong>
       <span>Até ${endDay === today ? 'hoje' : relDays(endDay, today)} às ${end}${duty.unit ? ` · ${esc(duty.unit)}` : ''}</span></div>
     </div>`;
   }
   const covered = shiftsInRange(state, today, today).find((s) => s.kind === 'coberto');
   const next = nextShift(state, today);
   const nextTxt = next
-    ? `Próximo serviço ${relDays(next.date, today)} (${fmtShort(next.date)}) às ${next.start}${next.kind === 'cobrindo' ? ` · troca com ${esc(next.colleague)}` : ''}`
+    ? `Próximo serviço ${relDays(next.date, today)} (${fmtShort(next.date)}) às ${next.start}${next.owner ? ` · serviço de ${esc(next.owner)}` : ' · meu serviço'}`
     : 'Nenhum serviço cadastrado à frente';
   return `<div class="status-card">
     <span class="status-ic">${icon(covered ? 'swap' : 'sun', 22)}</span>
-    <div><strong>${covered ? `Folga — ${esc(covered.colleague)} tira seu serviço hoje` : 'Folga hoje'}</strong><span>${nextTxt}</span></div>
+    <div><strong>${covered ? `Folga — serviço ${esc(permutaLabel(covered).replace(/^Permutado/, 'permutado'))} (${esc(covered.colleague)})` : 'Folga hoje'}</strong><span>${nextTxt}</span></div>
   </div>`;
 }
 

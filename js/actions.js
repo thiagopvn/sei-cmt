@@ -29,7 +29,7 @@ export async function newItemMenu(date = null) {
       { value: 'routine', label: 'Rotina', sub: 'Algo que se repete: diário, semanal, mensal', icon: 'repeat', color: 3 },
       { value: 'event', label: 'Compromisso', sub: 'Consulta, prova, buscar a filha, férias', icon: 'calendar', color: 5 },
       { value: 'service', label: 'Serviço', sub: 'Plantão da escala ou serviço extra', icon: 'shield', color: 'accent' },
-      { value: 'swap', label: 'Troca de serviço', sub: 'Quem tira por quem e quando', icon: 'swap', color: 7 },
+      { value: 'swap', label: 'Troca de serviço', sub: 'Quem tira por quem e quando', icon: 'swap', color: 'swap' },
       { value: 'expense', label: 'Conta / despesa', sub: 'Boleto, conta fixa, gasto', icon: 'wallet', color: 2 },
       { value: 'card', label: 'Compra no cartão', sub: 'À vista ou parcelada', icon: 'card', color: 4 },
       { value: 'income', label: 'Receita', sub: 'Salário, trabalho, outra renda', icon: 'coins', color: 6 },

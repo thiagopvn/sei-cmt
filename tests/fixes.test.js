@@ -83,3 +83,42 @@ test('ids e datas maliciosos de um backup são higienizados', () => {
   assert.deepEqual(s.cards[0].paid, { '2026-10': '2026-10-09' });
   assert.equal(s.timer.taskId, t.id);
 });
+
+test('serviço trocado aparece como "Permutado para o dia X"', async () => {
+  const { shiftsInRange, shiftTitle, permutaLabel } = await import('../js/domain/shifts.js');
+  const s = defaultState();
+  s.services = [{ id: 's1', date: '2026-10-09', start: '08:00', hours: 24, type: 'ordinario' }];
+  s.swaps = [{ id: 'w1', colleague: 'Sgt Silva', myDate: '2026-10-09', theirDate: '2026-10-12' }];
+  const sh = shiftsInRange(s, '2026-10-01', '2026-10-31').find((x) => x.kind === 'coberto');
+  assert.equal(shiftTitle(sh), 'Permutado para o dia 12/10');
+  assert.equal(permutaLabel(sh, { short: true }), 'Perm. 12/10');
+  s.swaps[0].theirDate = null;
+  const sh2 = shiftsInRange(s, '2026-10-01', '2026-10-31').find((x) => x.kind === 'coberto');
+  assert.equal(shiftTitle(sh2), 'Permutado (data a combinar)');
+});
+
+test('serviço de colega mostra de quem é', async () => {
+  const { shiftsInRange, shiftTitle, shortName, permutaDoMeuDia } = await import('../js/domain/shifts.js');
+  const s = defaultState();
+  s.swaps = [{ id: 'w1', colleague: 'Sgt Silva', myDate: '2026-10-16', theirDate: '2026-10-19' }];
+  const sh = shiftsInRange(s, '2026-10-01', '2026-10-31').find((x) => x.kind === 'cobrindo');
+  assert.equal(shiftTitle(sh), 'Serviço de Sgt Silva');
+  assert.equal(permutaDoMeuDia(sh), 'Troca referente ao dia 16/10');
+  assert.equal(shortName('Sgt Silva'), 'Silva');
+  assert.equal(shortName('Cb Albuquerque'), 'Albuque.');
+  assert.equal(shortName('Pedro'), 'Pedro');
+});
+
+test('serviço mostra o titular (meu ou de colega), inclusive extra pago', async () => {
+  const { shiftsInRange, shiftTitle, ownerLabel } = await import('../js/domain/shifts.js');
+  const s = defaultState();
+  s.services = [
+    { id: 's1', date: '2026-10-09', start: '08:00', hours: 24, type: 'ordinario' },
+    { id: 's2', date: '2026-10-10', start: '19:00', hours: 12, type: 'extra', paid: true, value: 280, owner: 'Sd Pereira' },
+  ];
+  const [mine, extra] = shiftsInRange(s, '2026-10-01', '2026-10-31');
+  assert.equal(ownerLabel(mine), 'Meu serviço');
+  assert.equal(ownerLabel(extra), 'De Sd Pereira');
+  assert.equal(shiftTitle(extra), 'Serviço extra (pago) de Sd Pereira');
+  assert.equal(migrate(s).services[1].owner, 'Sd Pereira');
+});

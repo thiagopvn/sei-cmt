@@ -94,7 +94,7 @@ export function buildAlarms(state, now = new Date()) {
   const before = Number(s.serviceAlertHours) || 12;
   for (const sh of shiftsInRange(state, today, addDays(today, 2))) {
     if (!sh.active) continue;
-    const label = sh.kind === 'cobrindo' ? `Troca: você tira por ${sh.colleague}` : 'Você está de serviço';
+    const label = sh.owner ? `Serviço de ${sh.owner} (você tira)` : 'Você está de serviço (meu serviço)';
     alarms.push({ key: `s:${sh.id}:${sh.date}`, when: at(sh.date, sh.start) - before * 3600000, title: label, body: `${relDays(sh.date, today)} (${fmtDM(sh.date)}) às ${sh.start} · ${sh.hours}h${sh.unit ? ` · ${sh.unit}` : ''}` });
   }
 

@@ -2,8 +2,9 @@
 
 import { esc } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
-import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, fromKey, todayKey } from '../lib/dates.js';
+import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, fromKey, todayKey, fmtDM } from '../lib/dates.js';
 import { collectRange, conflicts, LAYERS } from '../domain/agenda.js';
+import { permutaLabel, permutaDoMeuDia, shiftTitle, shortName } from '../domain/shifts.js';
 import { agendaItemRow, monthNav, tabs, emptyState, dot, colorVar, LAYER_COLOR } from '../ui/parts.js';
 import { rerender } from '../ui/bus.js';
 
@@ -49,13 +50,37 @@ function cellHtml(state, d, items, today, M) {
     const color = i.layer === 'financa' ? LAYER_COLOR.financa : state.areas.find((a) => a.id === i.area)?.color || LAYER_COLOR[i.layer];
     return `<span class="dot ${i.done ? 'hollow' : ''}" style="--c: ${colorVar(color)}"></span>`;
   }).join('');
+  const sh = shift?.ref.shift;
+  // Serviço de colega: nome + linha discreta com o dia da troca ("⇄ 16/10").
+  const swapRef = sh?.kind === 'cobrindo'
+    ? `<small class="cal-ref">${icon('swap', 10)}${sh.swap?.myDate ? fmtDM(sh.swap.myDate) : 'troca'}</small>` : '';
+  // Serviço pago (extra/RAS): verde, com moeda; ✓ quando já recebi.
+  // Serviço de outra pessoa (titular): mostra o nome; sem pagamento, em grafite.
+  const paid = sh?.kind === 'servico' && sh.paid;
+  const alheio = sh?.kind === 'servico' && !!sh.owner;
+  const received = paid && sh.service?.receivedAt ? icon('check', 10) : '';
+  const hrs = `${paid ? icon('coins', 10) : ''}${sh?.hours}h${received}`;
+  // Nome em cima e horas numa linha pequena embaixo (como na troca).
+  const servicoLabel = () => {
+    const ref = `<small class="cal-ref">${hrs}</small>`;
+    if (alheio) return [`${paid ? 'Extra' : 'Serviço'} de ${esc(sh.owner)}${ref}`, `${esc(shortName(sh.owner))}${ref}`];
+    return paid ? [`Meu extra${ref}`, hrs] : [`Meu serviço${ref}`, `${sh.hours}h`];
+  };
   const shiftLabel = shift
-    ? { servico: [`Serviço ${shift.ref.shift.hours}h`, `${shift.ref.shift.hours}h`], cobrindo: ['Troca', 'Troca'], coberto: ['Coberto', 'Cob.'] }[shift.kind]
+    ? {
+      servico: shift.kind === 'servico' ? servicoLabel() : null,
+      cobrindo: [`Serviço de ${esc(sh.colleague)}${swapRef}`, `${esc(shortName(sh.colleague))}${swapRef}`],
+      coberto: [esc(permutaLabel(sh)), esc(permutaLabel(sh, { short: true }))],
+    }[shift.kind]
     : null;
-  return `<button type="button" class="cal-cell ${monthOf(d) !== M ? 'out' : ''} ${d === today ? 'today' : ''} ${d === selected ? 'selected' : ''} ${shift ? `has-shift shift-${shift.kind}` : ''}"
-    data-action="ag-select" data-date="${esc(d)}" aria-label="${fmtLong(d)}${items.length ? `, ${items.length} itens` : ''}" aria-pressed="${d === selected}">
+  const shiftTip = !sh ? ''
+    : sh.kind === 'cobrindo' ? `${shiftTitle(sh)} — ${permutaDoMeuDia(sh).toLowerCase()}`
+      : sh.kind === 'servico' ? `${alheio ? `${paid ? 'Extra' : 'Serviço'} de ${sh.owner}` : paid ? 'Meu extra' : 'Meu serviço'}${paid ? ` (pago, ${sh.service?.receivedAt ? 'recebido' : 'a receber'})` : ''} · ${sh.hours}h`
+        : shiftTitle(sh);
+  return `<button type="button" class="cal-cell ${monthOf(d) !== M ? 'out' : ''} ${d === today ? 'today' : ''} ${d === selected ? 'selected' : ''} ${shift ? `has-shift shift-${shift.kind}${paid ? ' shift-pago' : alheio ? ' shift-alheio' : ''}` : ''}"
+    data-action="ag-select" data-date="${esc(d)}" aria-label="${fmtLong(d)}${shiftTip ? `, ${esc(shiftTip)}` : ''}${items.length ? `, ${items.length} itens` : ''}" aria-pressed="${d === selected}">
     <span class="cal-num">${fromKey(d).getDate()}</span>
-    ${shift ? `<span class="cal-shift"><span class="lbl-long">${shiftLabel[0]}</span><span class="lbl-short">${shiftLabel[1]}</span></span>` : ''}
+    ${shift ? `<span class="cal-shift" title="${esc(shiftTip)}"><span class="lbl-long">${shiftLabel[0]}</span><span class="lbl-short">${shiftLabel[1]}</span></span>` : ''}
     <span class="cal-dots">${dots}${others.length > 4 ? '<span class="cal-more">+</span>' : ''}</span>
     <span class="cal-items">${others.slice(0, 3).map((i) => `<span class="cal-item ${i.done ? 'is-done' : ''}">${i.time ? `${i.time} ` : ''}${esc(i.title)}</span>`).join('')}${others.length > 3 ? `<span class="cal-item muted">+${others.length - 3}</span>` : ''}</span>
   </button>`;
@@ -111,9 +136,10 @@ export default {
           <div class="cal-head">${head}</div>
           <div class="cal-body">${cells}</div>
           <div class="cal-legend">
-            <span><span class="legend-sw shift-servico"></span>Serviço</span>
-            <span><span class="legend-sw shift-cobrindo"></span>Troca (eu tiro)</span>
-            <span><span class="legend-sw shift-coberto"></span>Coberto por colega</span>
+            <span><span class="legend-sw shift-servico"></span>Meu serviço</span>
+            <span><span class="legend-sw shift-pago"></span>Pago (extra)</span>
+            <span><span class="legend-sw shift-cobrindo"></span>Serviço de colega (eu tiro)</span>
+            <span><span class="legend-sw shift-coberto"></span>Permutado (colega tira)</span>
           </div>
         </div>
         ${dayPanel(state, selected, selItems, today)}

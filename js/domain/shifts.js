@@ -1,11 +1,12 @@
 // Escala de serviços, trocas e pagamentos de serviços.
 //
-// service = { id, date, start, hours, type, unit, paid, value, payExpected, receivedAt, notes }
+// service = { id, date, start, hours, type, unit, owner, paid, value, payExpected, receivedAt, notes }
+//   owner: '' quando o serviço é meu; nome do colega quando tiro o serviço (ex.: extra) de outra pessoa
 // swap    = { id, colleague, myDate, theirDate, start, hours, notes, settled }
 //   myDate:    dia do MEU serviço que o colega tira por mim
 //   theirDate: dia do serviço DELE que eu tiro (a devolução)
 
-import { addDays, addMonths, dateInMonth, diffDays, eachDay, monthOf, monthStart, monthEnd, toMin, nowMin, weekday } from '../lib/dates.js';
+import { addDays, addMonths, dateInMonth, diffDays, eachDay, monthOf, monthStart, monthEnd, toMin, nowMin, weekday, fmtDM } from '../lib/dates.js';
 import { sum } from '../lib/util.js';
 
 export const SERVICE_TYPES = {
@@ -113,6 +114,7 @@ export function shiftsInRange(state, from, to) {
       hours: Number(s.hours) || def.hours,
       kind: swap ? 'coberto' : 'servico',
       active: !swap,
+      owner: swap ? null : s.owner || null,
       service: s,
       swap: swap || null,
       colleague: swap?.colleague || null,
@@ -131,6 +133,7 @@ export function shiftsInRange(state, from, to) {
         hours: Number(w.hours) || def.hours,
         kind: 'cobrindo',
         active: true,
+        owner: w.colleague,
         service: null,
         swap: w,
         colleague: w.colleague,
@@ -161,10 +164,37 @@ export function shiftsInRange(state, from, to) {
   return out.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
 }
 
+/** Nome curto do colega para espaços pequenos: "Sgt Silva" → "Silva". */
+export function shortName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  const n = parts.length > 1 ? parts[parts.length - 1] : parts[0] || '';
+  return n.length > 8 ? `${n.slice(0, 7)}.` : n;
+}
+
+/** Serviço de um colega que eu tiro: "Troca referente ao dia 16/10" (o meu dia que ele tira). */
+export function permutaDoMeuDia(sh) {
+  const d = sh.swap?.myDate;
+  return d ? `Troca referente ao dia ${fmtDM(d)}` : 'Troca (dia a combinar)';
+}
+
+/**
+ * Meu serviço que um colega tira: "Permutado para o dia 12/10" (o dia em que eu devolvo).
+ * `short` gera a versão curta para o calendário do celular.
+ */
+export function permutaLabel(sh, { short = false } = {}) {
+  const d = sh.swap?.theirDate;
+  if (short) return d ? `Perm. ${fmtDM(d)}` : 'Perm.';
+  return d ? `Permutado para o dia ${fmtDM(d)}` : 'Permutado (data a combinar)';
+}
+
+/** De quem é o serviço que vou tirar: "Meu serviço" ou "De Sgt Silva". */
+export const ownerLabel = (sh) => (sh.owner ? `De ${sh.owner}` : 'Meu serviço');
+
 export function shiftTitle(sh) {
-  if (sh.kind === 'cobrindo') return `Troca: tiro por ${sh.colleague}`;
-  if (sh.kind === 'coberto') return `${sh.colleague} tira por mim`;
-  return SERVICE_TYPES[sh.type]?.label || 'Serviço';
+  if (sh.kind === 'cobrindo') return `Serviço de ${sh.colleague}`;
+  if (sh.kind === 'coberto') return permutaLabel(sh);
+  const label = SERVICE_TYPES[sh.type]?.label || 'Serviço';
+  return sh.owner ? `${label} de ${sh.owner}` : label;
 }
 
 /** Turno ativo cobrindo o momento atual (considera turnos que começaram ontem). */

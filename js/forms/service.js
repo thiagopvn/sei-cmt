@@ -5,7 +5,7 @@ import { esc, uid, parseMoney, moneyInput, plural } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { todayKey, addMonths, monthOf, monthEnd, fmtDM, fmtShort, addDays } from '../lib/dates.js';
 import { openModal, confirmDialog, toast } from '../ui/overlay.js';
-import { field, input, select, textarea, toggle, weekdayChips } from '../ui/fields.js';
+import { field, input, select, textarea, toggle, weekdayChips, segmented } from '../ui/fields.js';
 import { SERVICE_TYPES, PATTERNS, generateDates, expectedPayDate } from '../domain/shifts.js';
 
 const HOURS = [6, 8, 12, 24, 48].map((h) => ({ value: h, label: `${h} horas` }));
@@ -20,7 +20,7 @@ export function openServiceForm({ service = null, date = null } = {}) {
   const def = state.settings.service;
   const isNew = !service;
   const s = service || {
-    date: date || todayKey(), start: def.start, hours: def.hours, type: 'ordinario', unit: '',
+    date: date || todayKey(), start: def.start, hours: def.hours, type: 'ordinario', unit: '', owner: '',
     paid: false, value: def.value || 0, payExpected: '', receivedAt: '', notes: '',
   };
   const swap = service ? state.swaps.find((w) => w.myDate === service.date) : null;
@@ -33,6 +33,10 @@ export function openServiceForm({ service = null, date = null } = {}) {
     <div class="grid-2">
       ${field('Duração', select('hours', HOURS.some((h) => h.value === Number(s.hours)) ? HOURS : [...HOURS, { value: s.hours, label: `${s.hours} horas` }], s.hours))}
       ${field('Tipo', select('type', Object.fromEntries(Object.entries(SERVICE_TYPES).map(([k, v]) => [k, v.label])), s.type))}
+    </div>
+    ${field('De quem é o serviço', segmented('ownerKind', [['meu', 'Meu'], ['colega', 'De um colega']], s.owner ? 'colega' : 'meu'))}
+    <div class="owner-field" ${s.owner ? '' : 'hidden'}>
+      ${field('Nome do colega (titular do serviço)', `${input('owner', s.owner || '', 'list="colleague-list" placeholder="Ex.: Sgt Silva" autocomplete="off" maxlength="60"')}${colleagueList(state)}`)}
     </div>
     ${field('Local / unidade / função', input('unit', s.unit, 'placeholder="Ex.: 1º GBM, Viatura ABT, Sala de operações" autocomplete="off"'))}
     ${toggle('paid', s.paid, 'Serviço pago (gera valor a receber)')}
@@ -65,6 +69,11 @@ export function openServiceForm({ service = null, date = null } = {}) {
         paid.dispatchEvent(new Event('change'));
       });
       paid.addEventListener('change', () => { el.querySelector('.pay-fields').hidden = !paid.checked; });
+      el.querySelectorAll('[name="ownerKind"]').forEach((r) => r.addEventListener('change', () => {
+        const colega = el.querySelector('[name="ownerKind"]:checked')?.value === 'colega';
+        el.querySelector('.owner-field').hidden = !colega;
+        if (colega) el.querySelector('[name="owner"]').focus();
+      }));
       el.querySelector('[name="received"]').addEventListener('change', (e) => {
         el.querySelector('.received-field').hidden = !e.target.checked;
       });
@@ -80,9 +89,17 @@ export function openServiceForm({ service = null, date = null } = {}) {
         toast('Serviço excluído', { action: { label: 'Desfazer', onClick: () => store.undo() } });
       });
     },
-    onSubmit(fd) {
+    onSubmit(fd, form) {
       const paid = fd.get('paid') === 'on';
+      const owner = fd.get('ownerKind') === 'colega' ? String(fd.get('owner') || '').trim() : '';
+      if (fd.get('ownerKind') === 'colega' && !owner) {
+        form.querySelector('[name="owner"]').classList.add('invalid');
+        form.querySelector('[name="owner"]').focus();
+        toast('Informe de qual colega é o serviço');
+        return false;
+      }
       const data = {
+        owner,
         date: fd.get('date'),
         start: fd.get('start'),
         hours: Number(fd.get('hours')) || 24,
@@ -97,6 +114,7 @@ export function openServiceForm({ service = null, date = null } = {}) {
       store.update((st) => {
         if (isNew) st.services.push({ id: uid(), ...data, createdAt: new Date().toISOString() });
         else Object.assign(st.services.find((x) => x.id === service.id), data);
+        if (owner && !st.colleagues.some((c) => c.name === owner)) st.colleagues.push({ id: uid(), name: owner, phone: '' });
       });
       toast(isNew ? 'Serviço adicionado à escala' : 'Serviço salvo');
     },

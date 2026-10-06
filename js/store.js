@@ -127,6 +127,7 @@ function migrate(raw) {
   }));
   s.services = s.services.map((x) => ({
     ...x, id: safeId(x.id), date: date(x.date), start: time(x.start), payExpected: date(x.payExpected, ''), receivedAt: date(x.receivedAt),
+    owner: typeof x.owner === 'string' ? x.owner.trim().slice(0, 60) : '',
   })).filter((x) => x.date);
   s.swaps = s.swaps.map((w) => ({ ...w, id: safeId(w.id), myDate: date(w.myDate), theirDate: date(w.theirDate), start: time(w.start) }));
   s.colleagues = s.colleagues.map((c) => ({ ...c, id: safeId(c.id) }));
