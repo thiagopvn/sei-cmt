@@ -4,6 +4,7 @@ import { esc } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, fromKey, todayKey } from '../lib/dates.js';
 import { collectRange, conflicts, LAYERS } from '../domain/agenda.js';
+import { permutaLabel } from '../domain/shifts.js';
 import { agendaItemRow, monthNav, tabs, emptyState, dot, colorVar, LAYER_COLOR } from '../ui/parts.js';
 import { rerender } from '../ui/bus.js';
 
@@ -50,7 +51,7 @@ function cellHtml(state, d, items, today, M) {
     return `<span class="dot ${i.done ? 'hollow' : ''}" style="--c: ${colorVar(color)}"></span>`;
   }).join('');
   const shiftLabel = shift
-    ? { servico: [`Serviço ${shift.ref.shift.hours}h`, `${shift.ref.shift.hours}h`], cobrindo: ['Troca', 'Troca'], coberto: ['Coberto', 'Cob.'] }[shift.kind]
+    ? { servico: [`Serviço ${shift.ref.shift.hours}h`, `${shift.ref.shift.hours}h`], cobrindo: ['Troca', 'Troca'], coberto: [permutaLabel(shift.ref.shift), permutaLabel(shift.ref.shift, { short: true })] }[shift.kind]
     : null;
   return `<button type="button" class="cal-cell ${monthOf(d) !== M ? 'out' : ''} ${d === today ? 'today' : ''} ${d === selected ? 'selected' : ''} ${shift ? `has-shift shift-${shift.kind}` : ''}"
     data-action="ag-select" data-date="${esc(d)}" aria-label="${fmtLong(d)}${items.length ? `, ${items.length} itens` : ''}" aria-pressed="${d === selected}">
@@ -113,7 +114,7 @@ export default {
           <div class="cal-legend">
             <span><span class="legend-sw shift-servico"></span>Serviço</span>
             <span><span class="legend-sw shift-cobrindo"></span>Troca (eu tiro)</span>
-            <span><span class="legend-sw shift-coberto"></span>Coberto por colega</span>
+            <span><span class="legend-sw shift-coberto"></span>Permutado (colega tira)</span>
           </div>
         </div>
         ${dayPanel(state, selected, selItems, today)}

@@ -5,7 +5,7 @@
 //   myDate:    dia do MEU serviço que o colega tira por mim
 //   theirDate: dia do serviço DELE que eu tiro (a devolução)
 
-import { addDays, addMonths, dateInMonth, diffDays, eachDay, monthOf, monthStart, monthEnd, toMin, nowMin, weekday } from '../lib/dates.js';
+import { addDays, addMonths, dateInMonth, diffDays, eachDay, monthOf, monthStart, monthEnd, toMin, nowMin, weekday, fmtDM } from '../lib/dates.js';
 import { sum } from '../lib/util.js';
 
 export const SERVICE_TYPES = {
@@ -161,9 +161,19 @@ export function shiftsInRange(state, from, to) {
   return out.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
 }
 
+/**
+ * Meu serviço que um colega tira: "Permutado para o dia 12/10" (o dia em que eu devolvo).
+ * `short` gera a versão curta para o calendário do celular.
+ */
+export function permutaLabel(sh, { short = false } = {}) {
+  const d = sh.swap?.theirDate;
+  if (short) return d ? `Perm. ${fmtDM(d)}` : 'Perm.';
+  return d ? `Permutado para o dia ${fmtDM(d)}` : 'Permutado (data a combinar)';
+}
+
 export function shiftTitle(sh) {
   if (sh.kind === 'cobrindo') return `Troca: tiro por ${sh.colleague}`;
-  if (sh.kind === 'coberto') return `${sh.colleague} tira por mim`;
+  if (sh.kind === 'coberto') return permutaLabel(sh);
   return SERVICE_TYPES[sh.type]?.label || 'Serviço';
 }
 

@@ -29,7 +29,7 @@ export function collectRange(state, from, to, { layers = null, area = null } = {
     for (const sh of shiftsInRange(state, from, to)) {
       push(sh.date, {
         id: `sh:${sh.id}`, layer: 'servico', area: 'trabalho', time: sh.start, kind: sh.kind,
-        title: shiftTitle(sh), sub: `${sh.start} · ${sh.hours}h${sh.unit ? ` · ${sh.unit}` : ''}`,
+        title: shiftTitle(sh), sub: `${sh.start} · ${sh.hours}h${sh.unit ? ` · ${sh.unit}` : ''}${sh.kind === 'coberto' ? ` · com ${sh.colleague}` : ''}`,
         done: false, ref: { shift: sh },
       });
     }

@@ -3,7 +3,7 @@
 import { esc, money, plural, sum } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addDays, fmtLong, fmtShort, monthOf, relDays, toMin, fromMin, hoursLabel } from '../lib/dates.js';
-import { onDutyNow, nextShift, shiftsInRange, monthStats } from '../domain/shifts.js';
+import { onDutyNow, nextShift, shiftsInRange, monthStats, permutaLabel } from '../domain/shifts.js';
 import { collectRange, conflicts } from '../domain/agenda.js';
 import { radar } from '../domain/insights.js';
 import { openItems } from '../domain/finance.js';
@@ -40,7 +40,7 @@ function statusCard(state, today) {
     : 'Nenhum serviço cadastrado à frente';
   return `<div class="status-card">
     <span class="status-ic">${icon(covered ? 'swap' : 'sun', 22)}</span>
-    <div><strong>${covered ? `Folga — ${esc(covered.colleague)} tira seu serviço hoje` : 'Folga hoje'}</strong><span>${nextTxt}</span></div>
+    <div><strong>${covered ? `Folga — serviço ${esc(permutaLabel(covered).replace(/^Permutado/, 'permutado'))} (${esc(covered.colleague)})` : 'Folga hoje'}</strong><span>${nextTxt}</span></div>
   </div>`;
 }
 

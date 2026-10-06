@@ -3,7 +3,7 @@
 import { esc, money, plural, sum } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addMonths, monthOf, monthStart, monthEnd, startOfWeek, addDays, fromKey, fmtShort, fmtDM, relDays, WEEKDAYS_SHORT, WEEKDAYS_MIN, hoursLabel, monthShortLabel, todayKey } from '../lib/dates.js';
-import { shiftsInRange, shiftTitle, monthStats, swapStatus, swapBalance, SWAP_LABEL, pendingPayments, payStatus, PAY_LABEL } from '../domain/shifts.js';
+import { shiftsInRange, shiftTitle, permutaLabel, monthStats, swapStatus, swapBalance, SWAP_LABEL, pendingPayments, payStatus, PAY_LABEL } from '../domain/shifts.js';
 import { openShift } from '../actions.js';
 import { tile, monthNav, tabs, emptyState } from '../ui/parts.js';
 import { columns, bindCharts } from '../ui/charts.js';
@@ -22,7 +22,7 @@ function miniCalendar(state, M, shifts, today) {
     const out = monthOf(d) !== M;
     return `<button type="button" class="mini-cell ${out ? 'out' : ''} ${d === today ? 'today' : ''} ${sh ? `shift-${sh.kind}` : ''}"
       ${out ? 'tabindex="-1"' : ''} data-action="${sh ? 'es-open' : 'service-new'}" data-date="${esc(d)}" data-shift="${esc(sh ? sh.id : '')}"
-      aria-label="${fmtShort(d)}${sh ? `: ${esc(shiftTitle(sh))}` : ': sem serviço, toque para adicionar'}">${fromKey(d).getDate()}</button>`;
+      aria-label="${fmtShort(d)}${sh ? `: ${esc(shiftTitle(sh))}` : ': sem serviço, toque para adicionar'}">${fromKey(d).getDate()}${sh?.kind === 'coberto' && sh.swap?.theirDate ? `<small class="mini-sub">p/ ${fmtDM(sh.swap.theirDate)}</small>` : ''}</button>`;
   }).join('');
   return `<div class="mini-cal card">
     <div class="mini-head">${Array.from({ length: 7 }, (_, i) => `<span>${WEEKDAYS_MIN[(ws + i) % 7]}</span>`).join('')}</div>
@@ -30,7 +30,7 @@ function miniCalendar(state, M, shifts, today) {
     <div class="cal-legend">
       <span><span class="legend-sw shift-servico"></span>Serviço</span>
       <span><span class="legend-sw shift-cobrindo"></span>Troca (eu tiro)</span>
-      <span><span class="legend-sw shift-coberto"></span>Coberto</span>
+      <span><span class="legend-sw shift-coberto"></span>Permutado</span>
     </div>
   </div>`;
 }
@@ -47,7 +47,7 @@ function shiftRow(state, sh, today) {
   const pay = sh.service ? payStatus(sh.service, today, state.settings) : null;
   const kindPill = sh.kind === 'cobrindo'
     ? `<span class="pill pill-violet">${icon('swap', 13)}Tiro por ${esc(sh.colleague)}</span>`
-    : sh.kind === 'coberto' ? `<span class="pill pill-violet">${icon('swap', 13)}${esc(sh.colleague)} tira por mim</span>` : '';
+    : sh.kind === 'coberto' ? `<span class="pill pill-violet">${icon('swap', 13)}${esc(permutaLabel(sh))} · ${esc(sh.colleague)}</span>` : '';
   return `<div class="row shift-row kind-${sh.kind} ${sh.date < today ? 'is-past' : ''}" role="button" tabindex="0" data-action="es-open" data-shift="${esc(sh.id)}">
     <div class="date-block ${sh.date === today ? 'today' : ''}"><strong>${d.getDate()}</strong><span>${WEEKDAYS_SHORT[d.getDay()]}</span></div>
     <div class="row-main">
@@ -181,7 +181,7 @@ export default {
       <div class="tiles">
         ${tile('Serviços', String(st.count), { ic: 'shield', sub: hoursLabel(st.hours) + ' trabalhadas' })}
         ${tile('Extras pagos', money(st.paidTotal), { ic: 'coins', sub: st.paidCount ? `${money(st.received)} recebido` : 'Nenhum no mês' })}
-        ${tile('Trocas no mês', String(st.covered + st.covering), { ic: 'swap', sub: `${st.covered} cobertos · ${st.covering} cobrindo` })}
+        ${tile('Trocas no mês', String(st.covered + st.covering), { ic: 'swap', sub: `${st.covered} permutados · ${st.covering} cobrindo` })}
         ${tile('Saldo de trocas', owe || owed ? `${owe ? `−${owe}` : ''}${owe && owed ? ' / ' : ''}${owed ? `+${owed}` : ''}` : '0', { ic: 'users', sub: owe || owed ? `devo ${owe} · me devem ${owed}` : 'Tudo quitado', to: '#/escala?tab=trocas' })}
       </div>` : ''}
       ${tabs([['servicos', 'Serviços'], ['trocas', 'Trocas', owe + owed || ''], ['pagamentos', 'Pagamentos', lateCount || '']], tab, 'es-tab')}
