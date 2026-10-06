@@ -1,6 +1,7 @@
 // Escala de serviços, trocas e pagamentos de serviços.
 //
-// service = { id, date, start, hours, type, unit, paid, value, payExpected, receivedAt, notes }
+// service = { id, date, start, hours, type, unit, owner, paid, value, payExpected, receivedAt, notes }
+//   owner: '' quando o serviço é meu; nome do colega quando tiro o serviço (ex.: extra) de outra pessoa
 // swap    = { id, colleague, myDate, theirDate, start, hours, notes, settled }
 //   myDate:    dia do MEU serviço que o colega tira por mim
 //   theirDate: dia do serviço DELE que eu tiro (a devolução)
@@ -113,6 +114,7 @@ export function shiftsInRange(state, from, to) {
       hours: Number(s.hours) || def.hours,
       kind: swap ? 'coberto' : 'servico',
       active: !swap,
+      owner: swap ? null : s.owner || null,
       service: s,
       swap: swap || null,
       colleague: swap?.colleague || null,
@@ -131,6 +133,7 @@ export function shiftsInRange(state, from, to) {
         hours: Number(w.hours) || def.hours,
         kind: 'cobrindo',
         active: true,
+        owner: w.colleague,
         service: null,
         swap: w,
         colleague: w.colleague,
@@ -184,10 +187,14 @@ export function permutaLabel(sh, { short = false } = {}) {
   return d ? `Permutado para o dia ${fmtDM(d)}` : 'Permutado (data a combinar)';
 }
 
+/** De quem é o serviço que vou tirar: "Meu serviço" ou "De Sgt Silva". */
+export const ownerLabel = (sh) => (sh.owner ? `De ${sh.owner}` : 'Meu serviço');
+
 export function shiftTitle(sh) {
   if (sh.kind === 'cobrindo') return `Serviço de ${sh.colleague}`;
   if (sh.kind === 'coberto') return permutaLabel(sh);
-  return SERVICE_TYPES[sh.type]?.label || 'Serviço';
+  const label = SERVICE_TYPES[sh.type]?.label || 'Serviço';
+  return sh.owner ? `${label} de ${sh.owner}` : label;
 }
 
 /** Turno ativo cobrindo o momento atual (considera turnos que começaram ontem). */

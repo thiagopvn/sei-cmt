@@ -29,14 +29,14 @@ function statusCard(state, today) {
     const endDay = addDays(duty.date, Math.floor((toMin(duty.start) + duty.hours * 60) / 1440));
     return `<div class="status-card on-duty">
       <span class="status-ic">${icon('shield', 22)}</span>
-      <div><strong>${duty.kind === 'cobrindo' ? `De serviço — serviço de ${esc(duty.colleague)}` : 'Você está de serviço — meu serviço'}</strong>
+      <div><strong>${duty.owner ? `De serviço — serviço de ${esc(duty.owner)}` : 'Você está de serviço — meu serviço'}</strong>
       <span>Até ${endDay === today ? 'hoje' : relDays(endDay, today)} às ${end}${duty.unit ? ` · ${esc(duty.unit)}` : ''}</span></div>
     </div>`;
   }
   const covered = shiftsInRange(state, today, today).find((s) => s.kind === 'coberto');
   const next = nextShift(state, today);
   const nextTxt = next
-    ? `Próximo serviço ${relDays(next.date, today)} (${fmtShort(next.date)}) às ${next.start}${next.kind === 'cobrindo' ? ` · serviço de ${esc(next.colleague)}` : ' · meu serviço'}`
+    ? `Próximo serviço ${relDays(next.date, today)} (${fmtShort(next.date)}) às ${next.start}${next.owner ? ` · serviço de ${esc(next.owner)}` : ' · meu serviço'}`
     : 'Nenhum serviço cadastrado à frente';
   return `<div class="status-card">
     <span class="status-ic">${icon(covered ? 'swap' : 'sun', 22)}</span>

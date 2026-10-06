@@ -26,7 +26,7 @@ export function loadSample() {
     st.services.push(extra(addDays(T, -40), addDays(T, -8)));
     st.services.push(extra(addDays(T, -33), null, addDays(T, -3)));
     st.services.push(extra(addDays(T, -11), null));
-    st.services.push(extra(addDays(T, 5), null));
+    st.services.push({ ...extra(addDays(T, 5), null), owner: 'Sd Pereira' });
 
     // Trocas
     st.swaps.push({ id: uid(), sample: true, colleague: 'Sgt Silva', myDate: dates.find((d) => d > addDays(T, 8)), theirDate: null, start: '08:00', hours: 24, notes: 'Combinado pelo WhatsApp', settled: false, createdAt: now });

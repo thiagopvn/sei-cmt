@@ -108,3 +108,17 @@ test('serviço de colega mostra de quem é', async () => {
   assert.equal(shortName('Cb Albuquerque'), 'Albuque.');
   assert.equal(shortName('Pedro'), 'Pedro');
 });
+
+test('serviço mostra o titular (meu ou de colega), inclusive extra pago', async () => {
+  const { shiftsInRange, shiftTitle, ownerLabel } = await import('../js/domain/shifts.js');
+  const s = defaultState();
+  s.services = [
+    { id: 's1', date: '2026-10-09', start: '08:00', hours: 24, type: 'ordinario' },
+    { id: 's2', date: '2026-10-10', start: '19:00', hours: 12, type: 'extra', paid: true, value: 280, owner: 'Sd Pereira' },
+  ];
+  const [mine, extra] = shiftsInRange(s, '2026-10-01', '2026-10-31');
+  assert.equal(ownerLabel(mine), 'Meu serviço');
+  assert.equal(ownerLabel(extra), 'De Sd Pereira');
+  assert.equal(shiftTitle(extra), 'Serviço extra (pago) de Sd Pereira');
+  assert.equal(migrate(s).services[1].owner, 'Sd Pereira');
+});

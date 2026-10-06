@@ -3,7 +3,7 @@
 import { esc, money, plural, sum } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addMonths, monthOf, monthStart, monthEnd, startOfWeek, addDays, fromKey, fmtShort, fmtDM, relDays, WEEKDAYS_SHORT, WEEKDAYS_MIN, hoursLabel, monthShortLabel, todayKey } from '../lib/dates.js';
-import { shiftsInRange, shiftTitle, permutaLabel, permutaDoMeuDia, shortName, monthStats, swapStatus, swapBalance, SWAP_LABEL, pendingPayments, payStatus, PAY_LABEL } from '../domain/shifts.js';
+import { shiftsInRange, shiftTitle, permutaLabel, permutaDoMeuDia, shortName, ownerLabel, monthStats, swapStatus, swapBalance, SWAP_LABEL, pendingPayments, payStatus, PAY_LABEL } from '../domain/shifts.js';
 import { openShift } from '../actions.js';
 import { tile, monthNav, tabs, emptyState } from '../ui/parts.js';
 import { columns, bindCharts } from '../ui/charts.js';
@@ -20,15 +20,16 @@ function miniCalendar(state, M, shifts, today) {
   const cells = Array.from({ length: 42 }, (_, i) => addDays(first, i)).filter((d, i) => i < 35 || monthOf(addDays(first, 35)) === M).map((d) => {
     const sh = byDate.get(d);
     const out = monthOf(d) !== M;
-    return `<button type="button" class="mini-cell ${out ? 'out' : ''} ${d === today ? 'today' : ''} ${sh ? `shift-${sh.kind}` : ''}"
+    return `<button type="button" class="mini-cell ${out ? 'out' : ''} ${d === today ? 'today' : ''} ${sh ? `shift-${sh.kind}${sh.kind === 'servico' && sh.paid ? ' shift-pago' : sh.kind === 'servico' && sh.owner ? ' shift-alheio' : ''}` : ''}"
       ${out ? 'tabindex="-1"' : ''} data-action="${sh ? 'es-open' : 'service-new'}" data-date="${esc(d)}" data-shift="${esc(sh ? sh.id : '')}"
-      aria-label="${fmtShort(d)}${sh ? `: ${esc(shiftTitle(sh))}` : ': sem serviço, toque para adicionar'}">${fromKey(d).getDate()}${sh?.kind === 'coberto' && sh.swap?.theirDate ? `<small class="mini-sub">p/ ${fmtDM(sh.swap.theirDate)}</small>` : ''}${sh?.kind === 'cobrindo' ? `<small class="mini-sub">${esc(shortName(sh.colleague))}</small>` : ''}</button>`;
+      aria-label="${fmtShort(d)}${sh ? `: ${esc(shiftTitle(sh))}` : ': sem serviço, toque para adicionar'}">${fromKey(d).getDate()}${sh?.kind === 'coberto' && sh.swap?.theirDate ? `<small class="mini-sub">p/ ${fmtDM(sh.swap.theirDate)}</small>` : ''}${sh?.kind === 'cobrindo' ? `<small class="mini-sub">${esc(shortName(sh.colleague))}</small>` : ''}${sh?.kind === 'servico' && (sh.paid || sh.owner) ? `<small class="mini-sub">${sh.paid ? icon('coins', 10) : ''}${sh.owner ? esc(shortName(sh.owner)) : ''}</small>` : ''}</button>`;
   }).join('');
   return `<div class="mini-cal card">
     <div class="mini-head">${Array.from({ length: 7 }, (_, i) => `<span>${WEEKDAYS_MIN[(ws + i) % 7]}</span>`).join('')}</div>
     <div class="mini-body">${cells}</div>
     <div class="cal-legend">
       <span><span class="legend-sw shift-servico"></span>Meu serviço</span>
+      <span><span class="legend-sw shift-pago"></span>Pago</span>
       <span><span class="legend-sw shift-cobrindo"></span>De colega (eu tiro)</span>
       <span><span class="legend-sw shift-coberto"></span>Permutado</span>
     </div>
@@ -48,8 +49,8 @@ function shiftRow(state, sh, today) {
   const kindPill = sh.kind === 'cobrindo'
     ? `<span class="pill pill-violet">${icon('swap', 13)}${esc(permutaDoMeuDia(sh))}</span>`
     : sh.kind === 'coberto' ? `<span class="pill pill-violet">${icon('swap', 13)}${esc(permutaLabel(sh))} · ${esc(sh.colleague)}</span>`
-      : `<span class="meta">${icon('user', 13)}Meu serviço</span>`;
-  return `<div class="row shift-row kind-${sh.kind} ${sh.date < today ? 'is-past' : ''}" role="button" tabindex="0" data-action="es-open" data-shift="${esc(sh.id)}">
+      : `<span class="meta">${icon('user', 13)}${esc(ownerLabel(sh))}</span>`;
+  return `<div class="row shift-row kind-${sh.kind}${sh.kind === 'servico' && sh.paid ? ' is-paid' : ''} ${sh.date < today ? 'is-past' : ''}" role="button" tabindex="0" data-action="es-open" data-shift="${esc(sh.id)}">
     <div class="date-block ${sh.date === today ? 'today' : ''}"><strong>${d.getDate()}</strong><span>${WEEKDAYS_SHORT[d.getDay()]}</span></div>
     <div class="row-main">
       <div class="row-title">${esc(sh.kind === 'cobrindo' ? shiftTitle(sh) : sh.kind === 'servico' ? shiftTitle(sh) : sh.service ? shiftTitle({ ...sh, kind: 'servico' }) : 'Serviço')}</div>
