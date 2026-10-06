@@ -14,7 +14,7 @@ export function renderLogin(el, { message = '', onLocal, fresh = false } = {}) {
   el.innerHTML = `
     <div class="auth">
       <div class="auth-card card">
-        <div class="auth-brand"><span class="brand-mark">${icon('check', 20)}</span><strong>Rotina Geral</strong></div>
+        <div class="auth-brand"><img class="brand-logo" src="assets/logo-256.png" alt="Brasão do Grupamento Operacional do Comando Geral – CBMERJ" width="104" height="104"><strong>Rotina Geral</strong><small>GOCG · CBMERJ</small></div>
         <h1>${mode === 'criar' ? 'Criar sua conta' : 'Entrar'}</h1>
         <p class="muted">Sua agenda, escala, finanças e tarefas salvas na nuvem e sincronizadas entre celular e computador.</p>
         <div class="tabs auth-tabs" role="tablist">

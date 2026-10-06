@@ -240,7 +240,7 @@ async function startCloud() {
   cloudStarted = true;
   const hadAccount = !!localStorage.getItem('pauta:owner');
   if (hadAccount) showApp(); // abre na hora com a cópia local; a nuvem atualiza em seguida
-  else if (phase !== 'app') document.getElementById('view').innerHTML = '<div class="splash"><span class="brand-mark">✓</span><p class="muted">Carregando…</p></div>';
+  else if (phase !== 'app') document.getElementById('view').innerHTML = '<div class="splash"><img class="brand-logo" src="assets/logo-256.png" alt="" width="96" height="96"><p class="muted">Carregando…</p></div>';
   // Internet lenta: não deixa a pessoa presa no "Carregando…".
   const slow = setTimeout(() => {
     if (phase === 'boot') showLogin('A conexão está lenta. Aguarde, tente entrar ou use o app sem conta.');

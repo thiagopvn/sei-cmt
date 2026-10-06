@@ -1,5 +1,5 @@
 // Service worker: guarda o app para funcionar sem internet e mostra notificações.
-const VERSION = 'rotina-geral-v3';
+const VERSION = 'rotina-geral-v4';
 const FIREBASE = 'https://www.gstatic.com/firebasejs/12.12.0';
 const SDK = ['firebase-app.js', 'firebase-auth.js', 'firebase-database.js'].map((f) => `${FIREBASE}/${f}`);
 const ASSETS = [
@@ -7,7 +7,9 @@ const ASSETS = [
   'index.html',
   'manifest.webmanifest',
   'css/app.css',
-  'assets/icon.svg',
+  'assets/favicon-48.png',
+  'assets/logo-128.png',
+  'assets/logo-256.png',
   'assets/icon-192.png',
   'assets/icon-512.png',
   'assets/apple-touch-icon.png',

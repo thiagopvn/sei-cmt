@@ -104,7 +104,7 @@ export function chips(items, active, action, { all = null } = {}) {
       data-action="${action}" data-value="${esc(id ?? '')}">${color ? dot(color) : ''}${esc(label)}</button>`).join('')}</div>`;
 }
 
-export const LAYER_COLOR = { servico: 6, troca: 7, tarefa: 2, evento: 5, rotina: 3, financa: 4 };
+export const LAYER_COLOR = { servico: 8, troca: 7, tarefa: 2, evento: 5, rotina: 3, financa: 4 };
 
 export function agendaItemRow(state, it) {
   const color = it.layer === 'servico'
