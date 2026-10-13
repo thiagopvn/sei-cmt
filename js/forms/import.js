@@ -98,7 +98,7 @@ export function openImportForm({ onDone } = {}) {
         an = analyzeStatement(parsed, {
           invoiceMonth: c.kind === 'card' ? c.month || null : null,
           dueDay: card ? card.dueDay : c.dueDay,
-          cardId: c.kind === 'card' ? card?.id || 'novo' : null,
+          cardId: c.kind === 'card' ? card?.id || null : null,
           state,
           categorize: (r) => overrides.get(r.mk) || guessCategory(r, rules),
         });
@@ -177,16 +177,24 @@ export function openImportForm({ onDone } = {}) {
             <p class="muted small">Viram compras parceladas: as próximas parcelas já aparecem nas faturas seguintes — e não duplicam quando você importar o mês que vem.</p>
             ${inst.map((r) => `<div class="im-merchant"><span>${esc(r.title)} <small class="muted">· ${r.inst.k}/${r.inst.n}${r.inst.k < r.inst.n ? ` · faltam ${r.inst.n - r.inst.k}` : ' · última'}</small></span><span class="amount">${money(r.out)}</span></div>`).join('')}
           </section>` : ''}`;
-        btn.disabled = !t.newCount;
-        btn.textContent = t.newCount ? `Importar ${plural(t.newCount, 'lançamento', 'lançamentos')}` : 'Nada novo para importar';
+        // Fatura sem mês de vencimento espalharia as compras por faturas erradas: exige o mês.
+        const noMonth = card && !/^\d{4}-\d{2}$/.test(c.month);
+        if (noMonth) prev.insertAdjacentHTML('afterbegin', `<div class="notice notice-serious">${icon('alert', 16)}<span>Informe o mês de vencimento desta fatura para importar.</span></div>`);
+        btn.disabled = !t.newCount || noMonth;
+        btn.textContent = noMonth ? 'Informe o mês da fatura' : t.newCount ? `Importar ${plural(t.newCount, 'lançamento', 'lançamentos')}` : 'Nada novo para importar';
       };
 
       el.querySelector('[name="file"]').addEventListener('change', async (e) => {
+        // Arquivo novo: descarta a análise anterior antes de ler (um arquivo inválido não importa o antigo).
+        an = null;
+        btn.disabled = true;
+        btn.textContent = 'Importar';
         const f = e.target.files?.[0];
         if (!f) return;
         fileName = f.name;
         parsed = parseStatement(await f.text(), f.name);
         if (!parsed.tx.length) {
+          cfg.innerHTML = '';
           prev.innerHTML = `<div class="notice notice-serious">${icon('alert', 16)}<span>Não encontrei lançamentos neste arquivo. Use o CSV exportado pelo banco (data, descrição e valor).</span></div>`;
           return;
         }
@@ -208,8 +216,10 @@ export function openImportForm({ onDone } = {}) {
         }
       });
       btn.addEventListener('click', () => {
+        if (!an || !parsed) return;
         const c = config();
         const card = c.kind === 'card';
+        if (card && !/^\d{4}-\d{2}$/.test(c.month)) return;
         let res;
         store.update((s) => {
           // Categorias novas usadas na importação entram na lista.

@@ -113,7 +113,10 @@ function cartoesTab(state, M, today) {
       const openM = M === monthOf(today) ? openInvoiceMonth(c, today) : M;
       const inv = invoice(state, c, openM);
       const next = invoice(state, c, addMonths(openM, 1));
-      const closed = openM !== M ? invoice(state, c, M) : null;
+      // Fatura anterior à aberta (já fechada, vencendo ou vencida) — vale também quando vence antes de fechar.
+      const closedM = addMonths(openM, -1);
+      const closed = openM !== M ? invoice(state, c, closedM) : null;
+      const closedLate = closed && !closed.paidAt && closed.balance > 0 && closed.dueDate < today;
       const used = cardUsed(state, c, today);
       const pct = c.limit ? Math.min(100, Math.round((used / c.limit) * 100)) : null;
       const late = !inv.paidAt && inv.total > 0 && inv.dueDate < today;
@@ -129,7 +132,7 @@ function cartoesTab(state, M, today) {
             <span class="meta">${plural(inv.items.length, 'compra', 'compras')}</span>
           </span>
         </button>
-        ${closed && closed.total > 0 ? `<button type="button" class="cc-next link-btn small" data-action="fin-invoice" data-card="${esc(c.id)}" data-month="${esc(M)}">Fatura que vence ${fmtDM(closed.dueDate)}: ${money(closed.total)} · ${closed.paidAt ? 'paga' : 'em aberto'}</button>` : ''}
+        ${closed && closed.total > 0 ? `<button type="button" class="cc-next link-btn small" data-action="fin-invoice" data-card="${esc(c.id)}" data-month="${esc(closedM)}">Fatura que vence ${fmtDM(closed.dueDate)}: ${money(closed.total)} · ${closed.paidAt ? 'paga' : closedLate ? 'vencida' : `falta ${money(closed.balance)}`}</button>` : ''}
         <div class="cc-next muted small">Próxima fatura (parcelas já lançadas): ${money(next.total)}</div>
         ${pct !== null ? `<div class="meter" role="meter" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Limite usado">
           <span class="meter-fill ${pct > 85 ? 'high' : pct > 60 ? 'mid' : ''}" style="width:${pct}%"></span></div>

@@ -27,7 +27,8 @@ export function taskPayStatus(t, today) {
 }
 
 export function entryOccurrences(entry, M) {
-  if (entry.cardId || !entry.date) return [];
+  // Lançamento estornado (o valor voltou) não conta.
+  if (entry.cardId || !entry.date || entry.refundedAt) return [];
   const start = monthOf(entry.date);
   if (!entry.recurrence) return start === M ? [{ key: 'once', date: entry.date }] : [];
   if (M < start || (entry.until && M > entry.until)) return [];
@@ -188,7 +189,8 @@ export function monthSummary(state, M) {
     incomeExpected: r(sum(inc, (i) => i.amount)),
     incomeDone: r(sum(inc.filter((i) => i.settledAt), (i) => i.amount)),
     expenseExpected: r(sum(exp, (i) => i.amount)),
-    expenseDone: r(sum(exp.filter((i) => i.settledAt), (i) => i.amount)),
+    // Fatura com pagamento parcial conta o que já foi pago.
+    expenseDone: r(sum(exp, (i) => (i.settledAt ? i.amount : Number(i.paid) || 0))),
     get balance() { return r(this.incomeExpected - this.expenseExpected); },
   };
 }

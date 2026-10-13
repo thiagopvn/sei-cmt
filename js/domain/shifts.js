@@ -161,10 +161,19 @@ export function swapChain(state, swap) {
   return chain;
 }
 
-/** Trocas que dependem desta (repasses em cadeia), para desfazer junto. */
+/** Trocas que dependem desta (repasses em cadeia, pelo vínculo fromSwapId), para desfazer junto. */
 export function dependentSwaps(state, swap) {
-  const chain = swapChain(state, swap);
-  return chain.slice(chain.findIndex((w) => w.id === swap.id) + 1);
+  const out = [];
+  const seen = new Set([swap.id]);
+  for (let frontier = [swap.id]; frontier.length;) {
+    const next = (state.swaps || []).filter((w) => w.fromSwapId && frontier.includes(w.fromSwapId) && !seen.has(w.id));
+    for (const w of next) {
+      seen.add(w.id);
+      out.push(w);
+    }
+    frontier = next.map((w) => w.id);
+  }
+  return out;
 }
 
 /** Rendição (início) fora do padrão — ex.: '18:00' quando o padrão é 08:00; senão null. */

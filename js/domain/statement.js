@@ -119,15 +119,19 @@ export function parseStatement(text, fileName = '') {
   return { kind, tx, dueDate, bad };
 }
 
-/** Chaves já importadas (compras, parcelas, créditos e pagamentos). */
-export function importedKeys(state) {
+/**
+ * O que já foi importado no mesmo destino — o cartão escolhido ou a conta (lançamentos sem cartão).
+ * Compras iguais em cartões diferentes não se confundem; um cartão novo ainda não tem nada.
+ */
+export function importedScope(state, { kind = 'card', cardId = null } = {}) {
+  const entries = (state.entries || []).filter((e) => (kind === 'card' ? !!cardId && e.cardId === cardId : !e.cardId));
   const keys = new Set();
-  for (const e of state.entries || []) {
+  for (const e of entries) {
     if (e.importKey) keys.add(e.importKey);
     if (e.refundKey) keys.add(e.refundKey);
   }
-  for (const c of state.cards || []) for (const p of c.payments || []) if (p.importKey) keys.add(p.importKey);
-  return keys;
+  if (kind === 'card') for (const p of (state.cards || []).find((c) => c.id === cardId)?.payments || []) if (p.importKey) keys.add(p.importKey);
+  return { keys, entries };
 }
 
 /**
@@ -136,27 +140,31 @@ export function importedKeys(state) {
  * Retorna as linhas classificadas e os totais da fatura.
  */
 export function analyzeStatement(parsed, { invoiceMonth = null, dueDay = null, cardId = null, state = { entries: [], cards: [] }, categorize = () => 'Outros' } = {}) {
-  const existing = importedKeys(state);
+  const scope = importedScope(state, { kind: parsed.kind, cardId });
+  const stored = new Map(scope.entries.filter((e) => e.importKey).map((e) => [e.importKey, e]));
   const occ = new Map();
   const rows = parsed.tx.map((t, i) => {
     const inst = parsed.kind === 'card' ? t.title.match(INSTALLMENT_RE) : null;
     const mk = merchantKey(t.title);
     const cents = Math.round(Math.abs(t.out) * 100);
     const sign = t.out < 0 ? '-' : '';
+    // Parcela: a chave é a compra (estabelecimento, nº de parcelas e fatura da 1ª), sem o valor —
+    // a última parcela pode vir com 1 centavo a mais — e sem o identificador da linha, que muda todo mês.
+    const family = inst && invoiceMonth;
     let base;
-    if (t.extId) base = `id|${t.extId}`;
-    // A chave não depende do id do cartão (um cartão novo só ganha id ao salvar).
-    else if (inst && invoiceMonth) base = `parc|${mk}|${cents}|${inst[2]}|${addMonths(invoiceMonth, -(Number(inst[1]) - 1))}`;
+    if (family) base = `parc|${mk}|${inst[2]}|${addMonths(invoiceMonth, -(Number(inst[1]) - 1))}`;
+    else if (t.extId) base = `id|${t.extId}`;
     else base = `${parsed.kind}|${t.date}|${mk}|${sign}${cents}`;
     const n = (occ.get(base) || 0) + 1;
     occ.set(base, n);
     return {
       ...t, i, mk, cents, title: cleanTitle(t.title), raw: t.title,
       inst: inst ? { k: Number(inst[1]), n: Number(inst[2]) } : null,
-      key: t.extId ? base : `${base}|${n}`,
+      key: t.extId && !family ? base : `${base}|${n}`,
       type: null, dup: false, category: null, pairWith: null,
     };
   });
+  for (const r of rows) r.dup = scope.keys.has(r.key);
 
   // 1) Pagamentos de fatura (cartão) e transferências para pagar fatura (conta) não são gastos.
   for (const r of rows) {
@@ -164,10 +172,19 @@ export function analyzeStatement(parsed, { invoiceMonth = null, dueDay = null, c
     if (parsed.kind === 'account' && r.out > 0 && BILL_PAYMENT_RE.test(r.raw)) r.type = 'billpay';
   }
   // 2) Estornos: o valor vai e volta — casa o crédito com a compra de mesmo estabelecimento e valor.
-  const refundable = (r) => !r.type && r.out > 0;
+  const refundable = (r) => !r.type && r.out > 0 && r.pairWith == null;
   for (const cr of rows.filter((r) => !r.type && r.out < 0)) {
     const named = REFUND_RE.test(cr.raw);
-    const match = rows.find((r) => refundable(r) && !r.pairWith && r.cents === cr.cents && r.mk === cr.mk && r.date <= cr.date);
+    const match = rows.find((r) => refundable(r) && r.cents === cr.cents && r.mk === cr.mk && r.date <= cr.date);
+    // A compra do par já tinha sido importada (fatura parcial antes): o estorno tira a compra salva.
+    const saved = match?.dup ? stored.get(match.key) : null;
+    if (saved) {
+      match.pairWith = cr.i;
+      cr.pairWith = match.i;
+      cr.type = 'refundOld';
+      cr.refundEntryId = saved.id;
+      continue;
+    }
     if (match) {
       match.type = 'refunded';
       match.pairWith = cr.i;
@@ -176,8 +193,8 @@ export function analyzeStatement(parsed, { invoiceMonth = null, dueDay = null, c
       continue;
     }
     // Estorno de uma compra que já tinha sido importada antes.
-    const old = (state.entries || []).find((e) => e.importKey && !e.refundedAt && e.merchant === cr.mk
-      && Math.round(Math.abs(Number(e.amount) / Math.max(1, Number(e.installments) || 1)) * 100) === cr.cents && (!cardId || e.cardId === cardId));
+    const old = scope.entries.find((e) => e.importKey && !e.refundedAt && e.kind === 'despesa' && e.merchant === cr.mk
+      && Math.round(Math.abs(Number(e.amount) / Math.max(1, Number(e.installments) || 1)) * 100) === cr.cents);
     if (old) {
       cr.type = 'refundOld';
       cr.refundEntryId = old.id;
@@ -191,10 +208,7 @@ export function analyzeStatement(parsed, { invoiceMonth = null, dueDay = null, c
     if (parsed.kind === 'card') r.type = r.inst ? 'installment' : 'purchase';
     else r.type = r.out > 0 ? 'expense' : 'income';
   }
-  for (const r of rows) {
-    r.dup = existing.has(r.key);
-    if (['purchase', 'installment', 'expense', 'credit'].includes(r.type)) r.category = categorize(r);
-  }
+  for (const r of rows) if (['purchase', 'installment', 'expense', 'credit'].includes(r.type)) r.category = categorize(r);
 
   // Totais da fatura (cartão): tudo o que está no arquivo, já importado ou não.
   const charges = rows.filter((r) => r.type === 'purchase' || r.type === 'installment');
@@ -224,7 +238,8 @@ export function analyzeStatement(parsed, { invoiceMonth = null, dueDay = null, c
       advances,
       invoice: round2(purchasesTotal - creditsTotal),
       open: round2(purchasesTotal - creditsTotal - advances),
-      newCount: rows.filter((r) => !r.dup && !['refunded', 'refund'].includes(r.type)).length,
+      // Só o que a importação grava (pagamento de fatura na conta e pares de estorno não são gravados).
+      newCount: rows.filter((r) => !r.dup && !['refunded', 'refund', 'billpay'].includes(r.type)).length,
       dupCount: rows.filter((r) => r.dup).length,
     },
   };
@@ -276,8 +291,8 @@ export function applyImport(s, an, { cardId = null, newCard = null, invoiceMonth
       done.entries++;
     } else if (card && r.type === 'payment') {
       const month = r.prev && invoiceMonth ? addMonths(invoiceMonth, -1) : invoiceMonth;
+      // Só registra o pagamento: a fatura fica quitada quando os pagamentos cobrem o total (ver invoice()).
       card.payments.push({ id: uid(), date: r.date, amount: round2(-r.out), month, importKey: r.key });
-      if (r.prev && month && !card.paid[month]) card.paid[month] = r.date;
       done.payments++;
     } else if (r.type === 'refundOld') {
       const e = s.entries.find((x) => x.id === r.refundEntryId);

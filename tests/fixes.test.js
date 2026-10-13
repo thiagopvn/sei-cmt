@@ -215,3 +215,18 @@ test('rendição fora do padrão e saída do turno', async () => {
   assert.deepEqual(shiftEnd({ date: '2026-10-22', start: '18:00', hours: 14 }), { date: '2026-10-23', time: '08:00' });
   assert.deepEqual(shiftEnd({ date: '2026-10-22', start: '08:00', hours: 24 }), { date: '2026-10-23', time: '08:00' });
 });
+
+test('mudar a data da devolução leva junto o repasse (permuta da permuta)', async () => {
+  const { dependentSwaps, shiftsInRange } = await import('../js/domain/shifts.js');
+  const s = defaultState();
+  s.swaps = [
+    { id: 'w1', colleague: 'A', myDate: '2026-10-15', theirDate: '2026-10-22' },
+    { id: 'w2', colleague: 'B', myDate: '2026-10-22', theirDate: '2026-11-05', fromSwapId: 'w1' },
+  ];
+  // Datas desencontradas: o desfazer em cadeia ainda acha o repasse pelo vínculo.
+  s.swaps[0].theirDate = '2026-10-23';
+  assert.deepEqual(dependentSwaps(s, s.swaps[0]).map((w) => w.id), ['w2']);
+  // Com a data do repasse acompanhando, a cadeia volta a se ligar.
+  s.swaps[1].myDate = '2026-10-23';
+  assert.deepEqual(shiftsInRange(s, '2026-10-23', '2026-10-23').map((x) => `${x.kind}:${x.colleague}`), ['coberto:B']);
+});

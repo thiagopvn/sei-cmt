@@ -233,12 +233,17 @@ export function openInvoice(cardId, M) {
       const payBtn = el.querySelector('[data-pay]');
       const refresh = () => {
         el.querySelector('[data-invoice]').innerHTML = render();
-        const c = store.get().cards.find((x) => x.id === cardId);
-        payBtn.textContent = c?.paid?.[M] ? 'Desmarcar pagamento' : 'Marcar fatura como paga';
+        const st = store.get();
+        const c = st.cards.find((x) => x.id === cardId);
+        // Quitada pelos pagamentos importados: não há marca manual para desfazer.
+        const auto = c && !c.paid?.[M] && invoice(st, c, M).paidAt;
+        payBtn.disabled = !!auto;
+        payBtn.textContent = auto ? 'Quitada pelos pagamentos' : c?.paid?.[M] ? 'Desmarcar pagamento' : 'Marcar fatura como paga';
       };
       refresh();
       unsub = store.subscribe(refresh);
       payBtn.addEventListener('click', () => {
+        if (payBtn.disabled) return;
         store.update((s) => {
           const c = s.cards.find((x) => x.id === cardId);
           c.paid = c.paid || {};

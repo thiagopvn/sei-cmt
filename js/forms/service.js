@@ -324,9 +324,15 @@ export function openSwapForm({ swap = null, myDate = '', theirDate = '', service
         start: fd.get('start'), hours: Number(fd.get('hours')) || 24,
         notes: fd.get('notes').trim(), settled: fd.get('settled') === 'on',
       };
+      // Mudou a data em que eu tiraria o serviço dele: o repasse desse serviço (permuta da permuta) vai junto.
+      const passedOn = !isNew && their && their !== swap.theirDate ? swapsBySwap(st).get(swap.id) : null;
       store.update((st) => {
         if (isNew) st.swaps.push({ id: uid(), ...data, createdAt: new Date().toISOString() });
         else Object.assign(st.swaps.find((x) => x.id === swap.id), data);
+        if (passedOn) {
+          const dep = st.swaps.find((x) => x.id === passedOn.id);
+          if (dep) dep.myDate = their;
+        }
         const ph = fd.get('phone').trim();
         const c = st.colleagues.find((x) => x.name === name);
         if (c) c.phone = ph || c.phone;
