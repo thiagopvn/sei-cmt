@@ -5,6 +5,7 @@ import { icon } from '../lib/icons.js';
 import { addMonths, monthOf, monthStart, monthEnd, startOfWeek, addDays, fromKey, fmtShort, fmtDM, relDays, WEEKDAYS_SHORT, WEEKDAYS_MIN, hoursLabel, monthShortLabel, todayKey } from '../lib/dates.js';
 import { shiftsInRange, shiftTitle, permutaLabel, permutaDoMeuDia, shortName, ownerLabel, ownersOf, ownersShort, payerLabel, monthStats, swapStatus, swapBalance, SWAP_LABEL, pendingPayments, payStatus, PAY_LABEL } from '../domain/shifts.js';
 import { openShift } from '../actions.js';
+import { shiftTone, shiftLegend, byDuty, dutyTag, rendBadge, rendPill } from '../ui/shiftui.js';
 import { tile, monthNav, tabs, emptyState } from '../ui/parts.js';
 import { columns, bindCharts } from '../ui/charts.js';
 import { whatsappLink } from '../forms/service.js';
@@ -17,27 +18,27 @@ function miniCalendar(state, M, shifts, today) {
   const ws = Number(state.settings.weekStart) || 0;
   const first = startOfWeek(monthStart(M), ws);
   const byDate = new Map();
-  for (const s of shifts) byDate.set(s.date, [...(byDate.get(s.date) || []), s]);
+  for (const s of shifts) byDate.set(s.date, [...(byDate.get(s.date) || []), s].sort(byDuty));
   const cells = Array.from({ length: 42 }, (_, i) => addDays(first, i)).filter((d, i) => i < 35 || monthOf(addDays(first, 35)) === M).map((d) => {
     const list = byDate.get(d) || [];
     const sh = list[0];
     const out = monthOf(d) !== M;
     const owners = sh?.kind === 'servico' ? ownersOf(sh) : [];
     const more = list.length > 1 ? `<small class="mini-more">+${list.length - 1}</small>` : '';
-    return `<button type="button" class="mini-cell ${out ? 'out' : ''} ${d === today ? 'today' : ''} ${sh ? `shift-${sh.kind}${sh.kind === 'servico' && sh.paid ? ` shift-pago${sh.service?.receivedAt ? '' : ' a-receber'}` : owners.length ? ' shift-alheio' : ''}` : ''}"
+    // Rendição fora do padrão aparece no lugar do nome (é o que muda a rotina do dia).
+    const rend = sh && sh.active ? rendBadge(sh, state.settings, 9) : '';
+    const sub = rend ? `<small class="mini-sub">${rend}</small>`
+      : sh?.kind === 'coberto' && sh.swap?.theirDate ? `<small class="mini-sub" title="Permutado para o dia ${fmtDM(sh.swap.theirDate)}">${fmtDM(sh.swap.theirDate)}</small>`
+        : sh?.kind === 'cobrindo' ? `<small class="mini-sub">${esc(shortName(sh.colleague))}</small>`
+          : sh?.kind === 'servico' && owners.length ? `<small class="mini-sub">${esc(ownersShort(owners))}</small>` : '';
+    return `<button type="button" class="mini-cell ${out ? 'out' : ''} ${d === today ? 'today' : ''} ${sh ? `t-${shiftTone(sh)}` : ''}"
       ${out ? 'tabindex="-1"' : ''} data-action="${sh ? 'es-open' : 'service-new'}" data-date="${esc(d)}" data-shift="${esc(sh ? sh.id : '')}"
-      aria-label="${fmtShort(d)}${list.length ? `: ${esc(list.map(shiftTitle).join('; '))}` : ': sem serviço, toque para adicionar'}">${fromKey(d).getDate()}${sh?.kind === 'coberto' && sh.swap?.theirDate ? `<small class="mini-sub">p/ ${fmtDM(sh.swap.theirDate)}</small>` : ''}${sh?.kind === 'cobrindo' ? `<small class="mini-sub">${esc(shortName(sh.colleague))}</small>` : ''}${sh?.kind === 'servico' && owners.length ? `<small class="mini-sub">${esc(ownersShort(owners))}</small>` : ''}${more}</button>`;
+      aria-label="${fmtShort(d)}${list.length ? `: ${esc(list.map((x) => `${x.active ? 'eu tiro' : 'não tiro'} — ${shiftTitle(x)}`).join('; '))}` : ': sem serviço, toque para adicionar'}">${fromKey(d).getDate()}${sub}${more}</button>`;
   }).join('');
   return `<div class="mini-cal card">
     <div class="mini-head">${Array.from({ length: 7 }, (_, i) => `<span>${WEEKDAYS_MIN[(ws + i) % 7]}</span>`).join('')}</div>
     <div class="mini-body">${cells}</div>
-    <div class="cal-legend">
-      <span><span class="legend-sw shift-servico"></span>Meu serviço</span>
-      <span><span class="legend-sw shift-pago"></span>Extra recebido</span>
-      <span><span class="legend-sw shift-a-receber"></span>Extra a receber</span>
-      <span><span class="legend-sw shift-cobrindo"></span>De outro militar (eu tiro)</span>
-      <span><span class="legend-sw shift-coberto"></span>Permutado</span>
-    </div>
+    ${shiftLegend()}
   </div>`;
 }
 
@@ -52,14 +53,15 @@ function shiftRow(state, sh, today) {
   const d = fromKey(sh.date);
   const pay = sh.service ? payStatus(sh.service, today, state.settings) : null;
   const kindPill = sh.kind === 'cobrindo'
-    ? `<span class="pill pill-violet">${icon('swap', 13)}${esc(permutaDoMeuDia(sh))}</span>`
-    : sh.kind === 'coberto' ? `<span class="pill pill-violet">${icon('swap', 13)}${esc(permutaLabel(sh))} · ${esc(sh.colleague)}</span>`
+    ? `<span class="pill pill-troca">${icon('swap', 13)}${esc(permutaDoMeuDia(sh))}</span>`
+    : sh.kind === 'coberto' ? `<span class="pill pill-perm">${icon('arrowRight', 13)}${esc(permutaLabel(sh))} · ${esc(sh.colleague)} tira</span>`
       : `<span class="meta">${icon('user', 13)}${esc(ownerLabel(sh))}</span>`;
-  return `<div class="row shift-row kind-${sh.kind}${sh.kind === 'servico' && sh.paid ? ` is-paid${sh.service?.receivedAt ? '' : ' a-receber'}` : ''} ${sh.date < today ? 'is-past' : ''}" role="button" tabindex="0" data-action="es-open" data-shift="${esc(sh.id)}">
+  return `<div class="row shift-row kind-${sh.kind} t-${shiftTone(sh)} ${sh.date < today ? 'is-past' : ''}" role="button" tabindex="0" data-action="es-open" data-shift="${esc(sh.id)}">
     <div class="date-block ${sh.date === today ? 'today' : ''}"><strong>${d.getDate()}</strong><span>${WEEKDAYS_SHORT[d.getDay()]}</span></div>
     <div class="row-main">
       <div class="row-title">${esc(sh.kind === 'cobrindo' ? shiftTitle(sh) : sh.kind === 'servico' ? shiftTitle(sh) : sh.service ? shiftTitle({ ...sh, kind: 'servico' }) : 'Serviço')}</div>
       <div class="row-meta">
+        ${dutyTag(sh)}${rendPill(sh, state.settings)}
         <span class="meta">${icon('clock', 13)}${sh.start} · ${hoursLabel(sh.hours)}</span>
         ${sh.unit ? `<span class="meta">${icon('mapPin', 13)}${esc(sh.unit)}</span>` : ''}
         ${kindPill}
@@ -91,12 +93,14 @@ function swapsTab(state, today) {
     <span class="leg-ic ${dir}">${icon(dir === 'out' ? 'arrowUp' : 'arrowDown', 14)}</span>
     <span><small>${label}</small><strong>${date ? `${fmtShort(date)}${date > today ? ` · ${relDays(date, today)}` : ''}` : 'A combinar'}</strong></span>
   </div>`;
+  const origin = (w) => (w.fromSwapId ? state.swaps.find((x) => x.id === w.fromSwapId) : null);
   const swapCard = (w) => {
     const st = swapStatus(w, today);
     const pill = { quitada: 'pill-good', devo: 'pill-warning', me_devem: 'pill-violet', agendada: 'pill-soft' }[st];
     return `<article class="swap-card card" role="button" tabindex="0" data-action="swap-open" data-id="${esc(w.id)}">
       <div class="swap-top"><strong>${icon('user', 16)}${esc(w.colleague)}</strong><span class="pill ${pill}">${SWAP_LABEL[st]}</span></div>
-      <div class="legs">${leg('Ele tira o meu', w.myDate, 'out')}${leg('Eu tiro o dele', w.theirDate, 'in')}</div>
+      ${origin(w) ? `<p class="small swap-from">${icon('swap', 13)}Permuta da permuta: repasse do serviço de ${esc(origin(w).colleague)}</p>` : ''}
+      <div class="legs">${leg(origin(w) ? 'Ele tira por mim' : 'Ele tira o meu', w.myDate, 'out')}${leg('Eu tiro o dele', w.theirDate, 'in')}</div>
       ${w.notes ? `<p class="muted small">${esc(w.notes)}</p>` : ''}
     </article>`;
   };

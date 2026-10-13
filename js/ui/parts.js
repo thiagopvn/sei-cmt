@@ -6,12 +6,13 @@ import { diffDays, fmtShort, fmtDM, monthLabel, relDays } from '../lib/dates.js'
 import { checklistFor, urgency } from '../domain/tasks.js';
 import { describeRule } from '../domain/recurrence.js';
 import { taskPayStatus } from '../domain/finance.js';
+import { shiftTone, dutyTag, rendPill } from './shiftui.js';
 
 export const areaOf = (state, id) => state.areas.find((a) => a.id === id) || null;
 export const typeOf = (state, id) => state.types.find((t) => t.id === id) || null;
 
 /** Cor de marcação: um slot da paleta (1–8), 'accent' (vermelho do brasão), 'swap', 'paid' (recebido) ou 'due' (a receber). */
-const NAMED = { accent: 'var(--accent)', swap: 'var(--swap-bg)', paid: 'var(--paid-bg)', due: 'var(--due-bg)' };
+const NAMED = { accent: 'var(--accent)', swap: 'var(--swap-bg)', paid: 'var(--paid-bg)', due: 'var(--due-bg)', perm: 'var(--perm-line)' };
 export const colorVar = (color) => NAMED[color] || `var(--c${Number(color) || 0})`;
 
 export const dot = (color) => `<span class="dot" style="--c: ${colorVar(color)}"></span>`;
@@ -120,10 +121,11 @@ export function chips(items, active, action, { all = null } = {}) {
 }
 
 export const LAYER_COLOR = { servico: 'accent', troca: 'swap', tarefa: 2, evento: 5, rotina: 3, financa: 4 };
+const TONE_COLOR = { meu: 'accent', outro: 'swap', pago: 'paid', areceber: 'due', perm: 'perm' };
 
 export function agendaItemRow(state, it) {
-  const color = it.layer === 'servico'
-    ? (it.kind === 'servico' ? (it.ref.shift?.paid ? (it.ref.shift.service?.receivedAt ? 'paid' : 'due') : it.ref.shift?.owner ? 'swap' : LAYER_COLOR.servico) : LAYER_COLOR.troca)
+  const sh = it.layer === 'servico' ? it.ref.shift : null;
+  const color = sh ? TONE_COLOR[shiftTone(sh)]
     : it.layer === 'financa' ? LAYER_COLOR.financa : areaOf(state, it.area)?.color || LAYER_COLOR[it.layer];
   const checkable = !!it.ref.taskId || it.layer === 'financa';
   const checkAction = it.ref.taskId
@@ -136,7 +138,7 @@ export function agendaItemRow(state, it) {
       <span class="agenda-time">${it.time ? esc(it.time) : '—'}</span>
       <div class="row-main">
         <div class="row-title">${esc(it.title)}</div>
-        <div class="row-meta"><span class="meta">${esc(it.sub)}</span>${it.layer !== 'servico' && it.area ? areaTag(state, it.area) : ''}</div>
+        <div class="row-meta">${sh ? `${dutyTag(sh)}${rendPill(sh, state.settings)}` : ''}<span class="meta">${esc(it.sub)}</span>${it.layer !== 'servico' && it.area ? areaTag(state, it.area) : ''}</div>
       </div>
       ${checkable ? `<button type="button" class="check ${it.done ? 'checked' : ''}" ${checkAction} aria-label="${it.done ? 'Desmarcar' : 'Marcar como feito'}">${icon('check', 14)}</button>` : ''}
     </div>`;

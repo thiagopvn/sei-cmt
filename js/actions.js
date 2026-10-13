@@ -9,16 +9,16 @@ import { shiftsInRange } from './domain/shifts.js';
 import { openTaskForm } from './forms/task.js';
 import { openEventForm } from './forms/event.js';
 import { openServiceForm, openSwapForm, openGeneratorForm } from './forms/service.js';
+import { openShiftSheet } from './forms/shift.js';
 import { openEntryForm, openCardForm } from './forms/finance.js';
 import { actionSheet, toast } from './ui/overlay.js';
 import { startTimer, stopTimer, fmtDuration } from './timer.js';
 
 const findTask = (id) => store.get().tasks.find((t) => t.id === id);
 
+/** Tocar num serviço abre a ficha: "você tira / não tira", rendição, caminho da troca e ações. */
 export function openShift(shift) {
-  if (shift.service) return openServiceForm({ service: shift.service });
-  if (shift.swap) return openSwapForm({ swap: shift.swap });
-  return null;
+  return shift ? openShiftSheet(shift) : null;
 }
 
 export async function newItemMenu(date = null) {
