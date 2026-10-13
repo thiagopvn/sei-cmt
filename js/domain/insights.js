@@ -4,7 +4,8 @@
 import { addDays, diffDays, fmtDM, fmtShort, relDays } from '../lib/dates.js';
 import { money, plural, sum } from '../lib/util.js';
 import { activeInstance } from './tasks.js';
-import { openItems, invoice } from './finance.js';
+import { openItems, invoice, remaining, openInvoiceMonth, cardUsed } from './finance.js';
+import { budgetStatus } from './budgets.js';
 import { pendingPayments, swapStatus } from './shifts.js';
 import { conflicts } from './agenda.js';
 import { monthOf } from '../lib/dates.js';
@@ -69,7 +70,7 @@ export function radar(state, today, { synced = false } = {}) {
   if (lateBills.length) {
     out.push({
       level: 'critical', icon: 'wallet',
-      title: `${plural(lateBills.length, 'conta atrasada', 'contas atrasadas')} · ${money(sum(lateBills, (i) => i.amount))}`,
+      title: `${plural(lateBills.length, 'conta atrasada', 'contas atrasadas')} · ${money(sum(lateBills, remaining))}`,
       detail: names(lateBills.map((i) => i.title)),
       to: '#/financas',
     });
@@ -78,22 +79,57 @@ export function radar(state, today, { synced = false } = {}) {
   if (dueBills.length) {
     out.push({
       level: 'warning', icon: 'wallet',
-      title: `${plural(dueBills.length, 'conta a pagar', 'contas a pagar')} em breve · ${money(sum(dueBills, (i) => i.amount))}`,
+      title: `${plural(dueBills.length, 'conta a pagar', 'contas a pagar')} em breve · ${money(sum(dueBills, remaining))}`,
       detail: dueBills.slice(0, 3).map((i) => `${i.title} (${relDays(i.date, today)})`).join(' · '),
       to: '#/financas',
     });
   }
   for (const card of state.cards) {
-    const inv = invoice(state, card, monthOf(addDays(today, 10)));
+    // A fatura que está aberta (recebendo compras), com o que falta pagar.
+    const inv = invoice(state, card, openInvoiceMonth(card, today));
     const n = diffDays(today, inv.closingDate);
     if (inv.total > 0 && n >= 0 && n <= 3) {
       out.push({
         level: 'info', icon: 'card',
         title: `Fatura ${card.name} fecha ${relDays(inv.closingDate, today)}`,
-        detail: `Parcial de ${money(inv.total)}. Compras a partir de ${fmtDM(inv.closingDate)} vão para a próxima fatura.`,
+        detail: `Parcial de ${money(inv.total)}${inv.paidAmount ? ` (falta ${money(inv.balance)})` : ''}. Compras a partir de ${fmtDM(inv.closingDate)} vão para a próxima fatura.`,
         to: '#/financas?tab=cartoes',
       });
     }
+    // Limite do cartão quase todo usado (faturas em aberto + parcelas futuras).
+    if (Number(card.limit) > 0) {
+      const used = cardUsed(state, card, today);
+      const pct = Math.round((used / card.limit) * 100);
+      if (pct >= 85) {
+        out.push({
+          level: pct >= 100 ? 'serious' : 'warning', icon: 'card',
+          title: `Limite do ${card.name}: ${pct}% usado`,
+          detail: `${money(used)} de ${money(card.limit)} comprometidos (faturas em aberto e parcelas).`,
+          to: '#/financas?tab=cartoes',
+        });
+      }
+    }
+  }
+
+  // Limites de gasto do mês
+  const budgets = budgetStatus(state, monthOf(today));
+  const over = budgets.filter((b) => b.level === 'over');
+  const near = budgets.filter((b) => b.level === 'near');
+  if (over.length) {
+    out.push({
+      level: 'serious', icon: 'target',
+      title: over.length === 1 ? `Limite estourado: ${over[0].category}` : `${over.length} limites estourados`,
+      detail: over.slice(0, 3).map((b) => `${b.category} ${money(b.spent)} de ${money(b.limit)}`).join(' · '),
+      to: '#/financas',
+    });
+  }
+  if (near.length) {
+    out.push({
+      level: 'warning', icon: 'target',
+      title: near.length === 1 ? `Perto do limite: ${near[0].category} (${near[0].pct}%)` : `${near.length} categorias perto do limite`,
+      detail: near.slice(0, 3).map((b) => `${b.category}: resta ${money(b.left)}`).join(' · '),
+      to: '#/financas',
+    });
   }
 
   // Pagamentos de serviços

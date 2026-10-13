@@ -7,7 +7,8 @@ import { monthSummary, openItems, invoice, cardUsed, expensesByCategory, incomeB
 import { payerLabel } from '../domain/shifts.js';
 import { tile, monthNav, tabs, emptyState, chips } from '../ui/parts.js';
 import { hbars } from '../ui/charts.js';
-import { openInvoice } from '../forms/finance.js';
+import { openInvoice, openBudgetForm } from '../forms/finance.js';
+import { budgetStatus } from '../domain/budgets.js';
 import { openImportForm } from '../forms/import.js';
 import { cardInsights, insightTips } from '../domain/spending.js';
 import { rerender } from '../ui/bus.js';
@@ -65,6 +66,26 @@ function xray(state, today) {
   }).join('');
 }
 
+/** Limites do mês: barra por categoria; sem limites, um convite discreto para criar. */
+function budgetsCard(state, M) {
+  const list = budgetStatus(state, M);
+  if (!list.length) {
+    return `<section class="card budgets budgets-empty">
+      <div><strong>${icon('target', 16)}Limites de gasto</strong><span class="muted small">Ex.: Uber/99 até R$ 400 no mês. O app avisa quando chegar perto.</span></div>
+      <button type="button" class="btn btn-sm" data-action="fin-budgets" data-month="${esc(M)}">Definir limites</button>
+    </section>`;
+  }
+  return `<section class="card budgets">
+    <div class="budgets-head"><h3>${icon('target', 16)}Limites do mês</h3><button type="button" class="link-btn small" data-action="fin-budgets" data-month="${esc(M)}">Editar</button></div>
+    ${list.map((b) => `<div class="budget-row lvl-${b.level}">
+      <div class="budget-top"><strong>${esc(b.category)}</strong><span>${money(b.spent)} <small class="muted">de ${money(b.limit)}</small></span></div>
+      <div class="meter" role="meter" aria-valuenow="${Math.min(b.pct, 100)}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(b.category)}: ${b.pct}% do limite">
+        <span class="meter-fill ${b.level === 'over' ? 'high' : b.level === 'near' ? 'mid' : ''}" style="width:${Math.min(100, b.pct)}%"></span></div>
+      <small class="${b.level === 'over' ? 'budget-over' : 'muted'}">${b.level === 'over' ? `Passou ${money(-b.left)} (${b.pct}%)` : `Resta ${money(b.left)} · ${b.pct}%`}</small>
+    </div>`).join('')}
+  </section>`;
+}
+
 function resumoTab(state, M, sm, today) {
   const isCurrent = M === monthOf(today);
   // No mês atual, inclui o que ficou em aberto de meses anteriores.
@@ -76,6 +97,7 @@ function resumoTab(state, M, sm, today) {
   const bySrc = incomeBySource(state, M).map((x, i) => ({ label: x.category, value: x.value, color: [6, 7, 3, 2][i % 4] }));
   return `
     ${isCurrent ? xray(state, today) : ''}
+    ${budgetsCard(state, M)}
     <div class="two-col">
       <section class="section">
         <div class="section-head"><h2>${icon('arrowDown', 18)}A pagar</h2><span class="muted small">${money(sum(exp, remaining))} em aberto</span></div>
@@ -87,7 +109,7 @@ function resumoTab(state, M, sm, today) {
       </section>
     </div>
     <div class="two-col">
-      <section class="card chart-card"><h3>Para onde vai o dinheiro</h3>${hbars(byCat, { format: money, empty: 'Sem despesas neste mês.' })}</section>
+      <section class="card chart-card"><h3>Para onde vai o dinheiro</h3><p class="muted small chart-note">Gastos do mês; no cartão, as compras feitas no mês.</p>${hbars(byCat, { format: money, empty: 'Sem despesas neste mês.' })}</section>
       <section class="card chart-card"><h3>Fontes de renda</h3>${hbars(bySrc, { format: money, empty: 'Sem receitas neste mês.' })}</section>
     </div>`;
 }
@@ -193,6 +215,9 @@ export default {
     },
     'fin-invoice'(btn) {
       openInvoice(btn.dataset.card, btn.dataset.month);
+    },
+    'fin-budgets'(btn) {
+      openBudgetForm({ month: btn.dataset.month || month });
     },
     'fin-import'() {
       openImportForm({

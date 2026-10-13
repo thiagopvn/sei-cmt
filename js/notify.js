@@ -5,8 +5,8 @@ import { addDays, fmtDM, fromKey, toMin, relDays, todayKey } from './lib/dates.j
 import { money } from './lib/util.js';
 import { activeInstance } from './domain/tasks.js';
 import { eventInstances } from './domain/events.js';
-import { shiftsInRange, ownersOf, ownersText } from './domain/shifts.js';
-import { openItems } from './domain/finance.js';
+import { shiftsInRange, ownersOf, ownersText, rendicao } from './domain/shifts.js';
+import { openItems, remaining } from './domain/finance.js';
 import { toast } from './ui/overlay.js';
 
 const SENT_KEY = 'pauta:notified';
@@ -95,16 +95,18 @@ export function buildAlarms(state, now = new Date()) {
   for (const sh of shiftsInRange(state, today, addDays(today, 2))) {
     if (!sh.active) continue;
     const label = sh.owner ? `Serviço de ${ownersText(ownersOf(sh))} (você tira)` : 'Você está de serviço (meu serviço)';
-    alarms.push({ key: `s:${sh.id}:${sh.date}`, when: at(sh.date, sh.start) - before * 3600000, title: label, body: `${relDays(sh.date, today)} (${fmtDM(sh.date)}) às ${sh.start} · ${sh.hours}h${sh.unit ? ` · ${sh.unit}` : ''}` });
+    // Rendição fora do padrão (ex.: 18h) vem destacada para não chegar no horário errado.
+    const rend = rendicao(sh, s) ? `rendição às ${sh.start} (fora do padrão)` : `às ${sh.start}`;
+    alarms.push({ key: `s:${sh.id}:${sh.date}`, when: at(sh.date, sh.start) - before * 3600000, title: label, body: `${relDays(sh.date, today)} (${fmtDM(sh.date)}) ${rend} · ${sh.hours}h${sh.unit ? ` · ${sh.unit}` : ''}` });
   }
 
   const billDays = Number(s.billAlertDays) || 0;
   for (const it of openItems(state, today, billDays + 1, 1)) {
     if (it.kind !== 'despesa') continue;
     if (billDays > 0) {
-      alarms.push({ key: `f:${it.key}:${it.date}:pre`, when: at(addDays(it.date, -billDays), hour), title: `Conta a pagar: ${it.title}`, body: `${money(it.amount)} · vence ${relDays(it.date, today)} (${fmtDM(it.date)})` });
+      alarms.push({ key: `f:${it.key}:${it.date}:pre`, when: at(addDays(it.date, -billDays), hour), title: `Conta a pagar: ${it.title}`, body: `${money(remaining(it))} · vence ${relDays(it.date, today)} (${fmtDM(it.date)})` });
     }
-    alarms.push({ key: `f:${it.key}:${it.date}:due`, when: at(it.date, hour), title: `Vence hoje: ${it.title}`, body: money(it.amount) });
+    alarms.push({ key: `f:${it.key}:${it.date}:due`, when: at(it.date, hour), title: `Vence hoje: ${it.title}`, body: money(remaining(it)) });
   }
   return alarms;
 }

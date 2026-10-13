@@ -31,9 +31,9 @@ export function openImportForm({ onDone } = {}) {
     body: `
       <label class="import-drop">
         ${icon('upload', 26)}
-        <strong>Escolher arquivo .csv</strong>
+        <strong>Escolher arquivo .csv ou .ofx</strong>
         <span class="muted small">No app do banco, exporte a fatura do cartão ou o extrato da conta (ex.: Nubank → Fatura → Exportar). Nada é salvo antes de você conferir.</span>
-        <input type="file" name="file" accept=".csv,.txt,text/csv">
+        <input type="file" name="file" accept=".csv,.ofx,.txt,text/csv,application/x-ofx">
       </label>
       <div class="import-config"></div>
       <div class="import-preview"></div>`,
@@ -142,7 +142,7 @@ export function openImportForm({ onDone } = {}) {
             <div><span>Compras na fatura</span><strong>${money(t.purchases)}</strong></div>
             ${t.credits ? `<div><span>Estornos/créditos</span><strong>− ${money(t.credits)}</strong></div>` : ''}
             <div><span>Pago adiantado</span><strong>− ${money(t.advances)}</strong></div>
-            <div class="im-open"><span>Fatura em aberto${c.month ? ` · vence ${monthLabel(c.month)}` : ''}</span><strong>${money(t.open)}</strong></div>
+            <div class="im-open"><span>${t.open < 0 ? 'Saldo a favor na fatura' : 'Fatura em aberto'}${c.month ? ` · vence ${monthLabel(c.month)}` : ''}</span><strong>${money(Math.abs(t.open))}</strong></div>
           </div>`
           : `<div class="im-summary">
             <div><span>Saídas</span><strong>${money(sum(an.rows.filter((r) => r.type === 'expense'), (r) => r.out))}</strong></div>
@@ -195,7 +195,7 @@ export function openImportForm({ onDone } = {}) {
         parsed = parseStatement(await f.text(), f.name);
         if (!parsed.tx.length) {
           cfg.innerHTML = '';
-          prev.innerHTML = `<div class="notice notice-serious">${icon('alert', 16)}<span>Não encontrei lançamentos neste arquivo. Use o CSV exportado pelo banco (data, descrição e valor).</span></div>`;
+          prev.innerHTML = `<div class="notice notice-serious">${icon('alert', 16)}<span>Não encontrei lançamentos neste arquivo. Use o CSV ou OFX exportado pelo banco (data, descrição e valor).</span></div>`;
           return;
         }
         // Fatura de cartão com a maioria negativa: o banco usou o sinal invertido.
@@ -239,7 +239,7 @@ export function openImportForm({ onDone } = {}) {
         }, { undoable: true });
         m.close();
         const what = `${plural(res.entries, 'lançamento', 'lançamentos')}${res.payments ? ` e ${plural(res.payments, 'pagamento', 'pagamentos')}` : ''}${res.refunds ? ` · ${plural(res.refunds, 'estorno', 'estornos')}` : ''}`;
-        toast(card ? `Importado: ${what} · fatura em aberto ${money(an.totals.open)}` : `Importado: ${what}`, {
+        toast(card ? `Importado: ${what} · fatura em aberto ${money(Math.max(0, an.totals.open))}` : `Importado: ${what}`, {
           action: { label: 'Desfazer', onClick: () => store.undo() }, timeout: 8000,
         });
         onDone?.({ cardId: res.cardId, month: card ? c.month : null });

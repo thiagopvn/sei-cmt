@@ -1344,7 +1344,7 @@ body.has-timer #toast-root { bottom: calc(var(--nav-h) + var(--safe-b) + 152px);
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-width: 0; }
 .field-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text-2); }
 .field-hint { font-size: 12px; color: var(--text-3); }
-.field input, .field select, .field textarea, .edit-row input, .edit-row select {
+.field input, .field select, .field textarea, .edit-row input, .edit-row select, .budget-line input {
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
@@ -1355,7 +1355,7 @@ body.has-timer #toast-root { bottom: calc(var(--nav-h) + var(--safe-b) + 152px);
   transition: border-color .12s, box-shadow .12s;
 }
 .field textarea { resize: vertical; min-height: 80px; }
-.field input:focus, .field select:focus, .field textarea:focus, .edit-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.field input:focus, .field select:focus, .field textarea:focus, .edit-row input:focus, .budget-line input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .field .invalid, input.invalid { border-color: var(--critical) !important; box-shadow: 0 0 0 3px var(--critical-soft) !important; }
 .grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 12px; }
 
@@ -1602,3 +1602,18 @@ body.auth-screen .auth-local { color: var(--text-3); }
 .xray-tips p { margin: 2px 0 0; font-size: 13.5px; color: var(--text-2); line-height: 1.45; }
 .inv-payments { margin: 6px 0 10px; border: 1px solid var(--border); border-radius: 12px; }
 .inv-payments summary { display: flex; align-items: center; gap: 6px; padding: 8px 12px; cursor: pointer; font-size: 13.5px; font-weight: 600; }
+/* Limites de gasto */
+.budgets { padding: 14px 16px; margin-bottom: 16px; display: grid; gap: 12px; }
+.budgets-empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.budgets-empty strong, .budgets-head h3 { display: flex; align-items: center; gap: 6px; }
+.budgets-empty span { display: block; }
+.budgets-head { display: flex; align-items: center; justify-content: space-between; }
+.budgets-head h3 { margin: 0; font-size: 15px; }
+.budget-row { display: grid; gap: 4px; }
+.budget-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.budget-over { color: var(--critical-text); font-weight: 650; }
+.budget-form { display: grid; gap: 8px; }
+.budget-line { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.budget-cat { display: flex; flex-direction: column; min-width: 0; }
+.budget-line input { text-align: right; }
+.chart-note { margin: -4px 0 8px; }
