@@ -2,12 +2,14 @@
 //
 // service = { id, date, start, hours, type, unit, owner, paid, value, payExpected, receivedAt, notes }
 //   owner: '' quando o serviço é meu; nome do militar quando tiro o serviço (ex.: extra) de outra pessoa
-// swap    = { id, colleague, myDate, theirDate, serviceId, start, hours, notes, settled }
-//   myDate:    dia do MEU serviço que o militar tira por mim
-//   serviceId: qual serviço desse dia foi trocado (importa quando há mais de um no mesmo dia)
+// swap    = { id, colleague, myDate, theirDate, serviceId, fromSwapId, start, hours, notes, settled }
+//   myDate:     dia do MEU serviço que o militar tira por mim
+//   serviceId:  qual serviço desse dia foi trocado (importa quando há mais de um no mesmo dia)
+//   fromSwapId: permuta da permuta — o serviço que eu tiraria por outra troca (a perna "eu tiro" dela)
+//               foi repassado a este militar. Pode encadear sem limite.
 //   theirDate: dia do serviço DELE que eu tiro (a devolução)
 
-import { addDays, addMonths, dateInMonth, diffDays, eachDay, monthOf, monthStart, monthEnd, toMin, nowMin, weekday, fmtDM } from '../lib/dates.js';
+import { addDays, addMonths, dateInMonth, diffDays, eachDay, monthOf, monthStart, monthEnd, toMin, fromMin, nowMin, weekday, fmtDM } from '../lib/dates.js';
 import { sum } from '../lib/util.js';
 
 export const SERVICE_TYPES = {
@@ -105,7 +107,8 @@ export function swapsByService(state) {
   const services = state.services || [];
   const pending = [];
   for (const w of state.swaps || []) {
-    if (!w.myDate) continue;
+    // Repasse de outra troca não pega serviço cadastrado (ver swapsBySwap).
+    if (!w.myDate || w.fromSwapId) continue;
     if (!w.serviceId) {
       pending.push(w);
       continue;
@@ -125,6 +128,69 @@ export function swapsByService(state) {
   return byService;
 }
 
+/**
+ * Permuta da permuta: Map idDaTrocaOriginal → troca que repassou o serviço que eu tiraria por ela.
+ * Vale só quando a data bate (o repasse é do dia em que eu tiraria o serviço). Um repasse por troca.
+ */
+export function swapsBySwap(state) {
+  const byId = new Map((state.swaps || []).map((w) => [w.id, w]));
+  const out = new Map();
+  for (const w of state.swaps || []) {
+    if (!w.fromSwapId || w.fromSwapId === w.id) continue;
+    const origin = byId.get(w.fromSwapId);
+    if (origin && origin.theirDate && origin.theirDate === w.myDate && !out.has(origin.id)) out.set(origin.id, w);
+  }
+  return out;
+}
+
+/** Cadeia completa de uma troca: da troca original até o último repasse (sem repetir). */
+export function swapChain(state, swap) {
+  if (!swap) return [];
+  const byId = new Map((state.swaps || []).map((w) => [w.id, w]));
+  const next = swapsBySwap(state);
+  const chain = [];
+  const seen = new Set();
+  for (let cur = swap; cur && !seen.has(cur.id); cur = cur.fromSwapId ? byId.get(cur.fromSwapId) : null) {
+    seen.add(cur.id);
+    chain.unshift(cur);
+  }
+  for (let f = next.get(swap.id); f && !seen.has(f.id); f = next.get(f.id)) {
+    seen.add(f.id);
+    chain.push(f);
+  }
+  return chain;
+}
+
+/** Trocas que dependem desta (repasses em cadeia, pelo vínculo fromSwapId), para desfazer junto. */
+export function dependentSwaps(state, swap) {
+  const out = [];
+  const seen = new Set([swap.id]);
+  for (let frontier = [swap.id]; frontier.length;) {
+    const next = (state.swaps || []).filter((w) => w.fromSwapId && frontier.includes(w.fromSwapId) && !seen.has(w.id));
+    for (const w of next) {
+      seen.add(w.id);
+      out.push(w);
+    }
+    frontier = next.map((w) => w.id);
+  }
+  return out;
+}
+
+/** Rendição (início) fora do padrão — ex.: '18:00' quando o padrão é 08:00; senão null. */
+export function rendicao(sh, settings) {
+  const def = settings?.service?.start || '08:00';
+  return sh?.start && sh.start !== def ? sh.start : null;
+}
+
+/** "18h", "7h30". */
+export const hhLabel = (t) => (String(t).endsWith(':00') ? `${Number(String(t).slice(0, 2))}h` : String(t).replace(':', 'h'));
+
+/** Saída do turno: { date, time }. */
+export function shiftEnd(sh) {
+  const m = toMin(sh.start || '00:00') + (Number(sh.hours) || 0) * 60;
+  return { date: addDays(sh.date, Math.floor(m / 1440)), time: fromMin(m % 1440) };
+}
+
 /** Serviços cadastrados em um dia, na ordem em que aparecem (para escolher qual foi trocado). */
 export const servicesOn = (state, date) => (state.services || []).filter((s) => s.date === date)
   .sort((a, b) => String(a.start || '').localeCompare(String(b.start || '')) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
@@ -132,13 +198,15 @@ export const servicesOn = (state, date) => (state.services || []).filter((s) => 
 /**
  * Lista unificada de turnos em um intervalo, combinando serviços cadastrados e trocas.
  * kind: 'servico' (meu) | 'cobrindo' (tiro por um militar) | 'coberto' (militar tira o meu)
+ * Um 'cobrindo' repassado a outro militar (permuta da permuta) vira 'coberto' com `origin` = troca original.
  */
 export function shiftsInRange(state, from, to) {
   const { settings } = state;
   const def = settings.service;
   const out = [];
   const bySvc = swapsByService(state);
-  const linked = new Set(bySvc.values());
+  const bySwap = swapsBySwap(state);
+  const linked = new Set([...bySvc.values(), ...bySwap.values()]);
   for (const s of state.services) {
     if (s.date < from || s.date > to) continue;
     const swap = bySvc.get(s.id);
@@ -161,17 +229,20 @@ export function shiftsInRange(state, from, to) {
   }
   for (const w of state.swaps) {
     if (w.theirDate && w.theirDate >= from && w.theirDate <= to) {
+      const next = bySwap.get(w.id);
       out.push({
         id: `swap-in-${w.id}`,
         date: w.theirDate,
         start: w.start || def.start,
         hours: Number(w.hours) || def.hours,
-        kind: 'cobrindo',
-        active: true,
+        // Repassado: quem tira é o militar da troca seguinte; eu devolvo na data dela.
+        kind: next ? 'coberto' : 'cobrindo',
+        active: !next,
         owner: w.colleague,
         service: null,
-        swap: w,
-        colleague: w.colleague,
+        swap: next || w,
+        origin: next ? w : null,
+        colleague: next ? next.colleague : w.colleague,
         type: 'troca',
         unit: '',
         paid: false,

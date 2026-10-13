@@ -13,7 +13,9 @@ Aplicativo (PWA) para organizar a vida pessoal e profissional em um só lugar: *
 **Escala**
 - Gerador automático: 24×72, 24×48, 24×96, 12×36, 12×60, dias fixos da semana ou a cada N dias.
 - Serviços ordinários, extras pagos (com valor), sobreaviso e outros.
-- **Trocas**: quem tira o seu serviço e quando você devolve (ou “a combinar”); saldo por militar (quem deve a quem) e botão para conversar no WhatsApp.
+- **Calendário sem confusão**: etiqueta **sólida = eu tiro** (vermelho: meu · roxo: de outro militar · verde/dourado: extra recebido/a receber) e **tracejada = permutado, não tiro** (com a data da devolução). Marca-texto amarelo quando a **rendição** foge do padrão (ex.: rende 18h em vez de 08h).
+- **Ficha do serviço**: ao tocar num serviço, mostra “Você tira / Você NÃO tira”, rendição, saída, o caminho da troca e as ações (trocar, repassar, ver troca, desfazer).
+- **Trocas**: quem tira o seu serviço e quando você devolve (ou “a combinar”); **permuta da permuta** (repassar o serviço que você tiraria por uma troca, quantas vezes precisar); saldo por militar (quem deve a quem) e botão para conversar no WhatsApp.
 - **Pagamentos**: previsão de pagamento de cada serviço extra, avisos de pagamento atrasado e botão “Recebi”.
 
 **Finanças**
@@ -21,6 +23,8 @@ Aplicativo (PWA) para organizar a vida pessoal e profissional em um só lugar: *
 - Contas fixas mensais ou anuais (aluguel, creche, IPVA…), receitas e despesas avulsas.
 - **Cartões de crédito** com dia de fechamento e vencimento; compras parceladas caem sozinhas nas faturas certas; limite usado.
 - Serviços extras e trabalhos pagos (TCC, IPM, sindicância…) entram automaticamente em “A receber”.
+- **Importar fatura ou extrato (CSV)** com prévia antes de salvar: não duplica (reimportar só traz o que é novo), anula estornos (o valor que vai e volta), separa pagamentos da fatura (anterior x adiantamento), transforma “Parcela x/y” em compra parcelada sem repetir no mês seguinte, categoriza sozinho e lembra as categorias que você corrigir.
+- **Raio-x da fatura aberta**: falta pagar, já pago, projeção até o fechamento, para onde foi o dinheiro, corridas por app, assinaturas (inclusive assinaturas de IA repetidas), envios por PicPay/Pix no cartão comparados ao dinheiro dos extras, parcelas já comprometidas e maiores compras.
 - Gráficos de para onde vai o dinheiro e de fontes de renda.
 
 **Tarefas**
@@ -90,7 +94,7 @@ js/main.js                                navegação, eventos, cronômetro, lem
 js/store.js                               estado e cópia local
 js/cloud/                                 Firebase: login e sincronização (config, lógica de sync, conexão)
 database.rules.json                       regras de segurança do Realtime Database
-js/domain/                                regras: escala, trocas, finanças, tarefas, agenda, radar
+js/domain/                                regras: escala, trocas, finanças, importação de extratos, categorias, raio-x, tarefas, agenda, radar
 js/views/                                 telas: início, agenda, tarefas, escala, finanças, ajustes, login
 js/forms/                                 formulários
 js/ui/                                    componentes (janelas, campos, gráficos, captura rápida)

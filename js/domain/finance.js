@@ -27,7 +27,8 @@ export function taskPayStatus(t, today) {
 }
 
 export function entryOccurrences(entry, M) {
-  if (entry.cardId || !entry.date) return [];
+  // Lançamento estornado (o valor voltou) não conta.
+  if (entry.cardId || !entry.date || entry.refundedAt) return [];
   const start = monthOf(entry.date);
   if (!entry.recurrence) return start === M ? [{ key: 'once', date: entry.date }] : [];
   if (M < start || (entry.until && M > entry.until)) return [];
@@ -45,30 +46,49 @@ export function invoiceDueMonth(card, purchaseDate) {
 }
 
 function installmentValue(total, n, i) {
-  const base = Math.floor((total * 100) / n) / 100;
-  return i === n - 1 ? Math.round((total - base * (n - 1)) * 100) / 100 : base;
+  // Em centavos inteiros: 2103,96 / 12 = 175,33 exato (sem erro de ponto flutuante).
+  const cents = Math.round(total * 100);
+  const base = Math.floor(cents / n);
+  return (i === n - 1 ? cents - base * (n - 1) : base) / 100;
 }
 
 export function invoice(state, card, M) {
   const items = [];
   for (const e of state.entries) {
-    if (e.cardId !== card.id || !e.date) continue;
+    // Compra estornada (o valor voltou) não entra na fatura.
+    if (e.cardId !== card.id || !e.date || e.refundedAt) continue;
     const n = Math.max(1, Number(e.installments) || 1);
-    const i = monthDiff(invoiceDueMonth(card, e.date), M);
+    // Importada de fatura: o mês vem do arquivo; lançada à mão: calcula pelo dia de fechamento.
+    const first = /^\d{4}-\d{2}$/.test(e.invoiceMonth || '') ? e.invoiceMonth : invoiceDueMonth(card, e.date);
+    // Parcela importada no meio ("11/12"): as anteriores eram de faturas que não foram importadas.
+    if (e.sinceMonth && M < e.sinceMonth) continue;
+    const i = monthDiff(first, M);
     if (i < 0 || i >= n) continue;
     items.push({ entry: e, index: i + 1, count: n, amount: installmentValue(Number(e.amount) || 0, n, i) });
   }
   const closeM = Number(card.dueDay) > Number(card.closingDay) ? M : addMonths(M, -1);
+  const total = Math.round(sum(items, (x) => x.amount) * 100) / 100;
+  // Pagamentos parciais/adiantados desta fatura (ex.: "Pagamento recebido" importado).
+  const payments = (card.payments || []).filter((p) => p.month === M).sort((a, b) => a.date.localeCompare(b.date));
+  const paidAmount = Math.round(sum(payments, (p) => p.amount) * 100) / 100;
+  const paidAt = card.paid?.[M] || (total > 0 && paidAmount >= total ? payments[payments.length - 1]?.date || null : null);
   return {
     card,
     month: M,
     dueDate: dateInMonth(M, Number(card.dueDay) || 1),
     closingDate: dateInMonth(closeM, Number(card.closingDay) || 1),
     items: items.sort((a, b) => a.entry.date.localeCompare(b.entry.date)),
-    total: Math.round(sum(items, (x) => x.amount) * 100) / 100,
-    paidAt: card.paid?.[M] || null,
+    total,
+    payments,
+    paidAmount,
+    /** Quanto ainda falta pagar. */
+    balance: paidAt ? 0 : Math.max(0, Math.round((total - paidAmount) * 100) / 100),
+    paidAt,
   };
 }
+
+/** Mês de vencimento da fatura que está aberta hoje (recebendo compras). */
+export const openInvoiceMonth = (card, today) => invoiceDueMonth(card, today);
 
 /** Quanto do limite está comprometido (parcelas de faturas ainda não pagas). */
 export function cardUsed(state, card, today) {
@@ -76,10 +96,13 @@ export function cardUsed(state, card, today) {
   let used = 0;
   for (let i = -36; i <= 24; i++) {
     const inv = invoice(state, card, addMonths(M, i));
-    if (!inv.paidAt) used += inv.total;
+    if (!inv.paidAt) used += inv.balance;
   }
   return Math.round(used * 100) / 100;
 }
+
+/** Quanto falta pagar/receber de um item do ledger (fatura com pagamento adiantado conta só o resto). */
+export const remaining = (it) => (it.settledAt ? 0 : Math.max(0, Math.round(((Number(it.amount) || 0) - (Number(it.paid) || 0)) * 100) / 100));
 
 /**
  * Todos os itens financeiros de um mês, de todas as fontes.
@@ -147,6 +170,7 @@ export function ledger(state, M) {
       title: `Fatura ${c.name}`,
       date: inv.dueDate,
       amount: inv.total,
+      paid: inv.paidAmount,
       settledAt: inv.paidAt,
       category: 'Cartão de crédito',
       ref: { cardId: c.id, month: M },
@@ -165,7 +189,8 @@ export function monthSummary(state, M) {
     incomeExpected: r(sum(inc, (i) => i.amount)),
     incomeDone: r(sum(inc.filter((i) => i.settledAt), (i) => i.amount)),
     expenseExpected: r(sum(exp, (i) => i.amount)),
-    expenseDone: r(sum(exp.filter((i) => i.settledAt), (i) => i.amount)),
+    // Fatura com pagamento parcial conta o que já foi pago.
+    expenseDone: r(sum(exp, (i) => (i.settledAt ? i.amount : Number(i.paid) || 0))),
     get balance() { return r(this.incomeExpected - this.expenseExpected); },
   };
 }

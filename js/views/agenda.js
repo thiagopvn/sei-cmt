@@ -2,9 +2,9 @@
 
 import { esc } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
-import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, fromKey, todayKey, fmtDM } from '../lib/dates.js';
+import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, fromKey, todayKey } from '../lib/dates.js';
 import { collectRange, conflicts, LAYERS } from '../domain/agenda.js';
-import { permutaLabel, permutaDoMeuDia, shiftTitle, shortName, ownersOf, ownersText, payStatus } from '../domain/shifts.js';
+import { shiftPill, shiftLegend, byDuty } from '../ui/shiftui.js';
 import { agendaItemRow, monthNav, tabs, emptyState, dot, colorVar, LAYER_COLOR } from '../ui/parts.js';
 import { rerender } from '../ui/bus.js';
 
@@ -43,48 +43,9 @@ function filters(state) {
   </div>`;
 }
 
-/** Etiqueta de um serviço no calendário: { cls, long, short, tip }. Nome em cima, detalhe pequeno embaixo. */
-function shiftPill(sh, state, today) {
-  if (sh.kind === 'cobrindo') {
-    const ref = `<small class="cal-ref">${icon('swap', 10)}${sh.swap?.myDate ? fmtDM(sh.swap.myDate) : 'troca'}</small>`;
-    return {
-      cls: 'k-cobrindo',
-      long: `Serviço de ${esc(sh.colleague)}${ref}`,
-      short: `${esc(shortName(sh.colleague))}${ref}`,
-      tip: `${shiftTitle(sh)} — ${permutaDoMeuDia(sh).toLowerCase()}`,
-    };
-  }
-  if (sh.kind === 'coberto') {
-    return { cls: 'k-coberto', long: esc(permutaLabel(sh)), short: esc(permutaLabel(sh, { short: true })), tip: shiftTitle(sh) };
-  }
-  // Serviço pago (extra): verde com ✓ quando já recebi, dourado enquanto está a receber (⚠ se atrasou).
-  // Serviço de outro(s) militar(es): mostra os nomes.
-  const owners = ownersOf(sh);
-  const status = sh.paid && sh.service ? payStatus(sh.service, today, state.settings) : null;
-  const mark = status === 'recebido' ? icon('check', 10) : status === 'atrasado' ? icon('alert', 10) : '';
-  const hrs = `${sh.paid ? icon('coins', 10) : ''}${sh.hours}h${mark}`;
-  const ref = `<small class="cal-ref">${hrs}</small>`;
-  // No celular a cor já diz que é pago: sem a moeda, para caber o nome.
-  const refShort = `<small class="cal-ref">${sh.hours}h${mark}</small>`;
-  const namesShort = owners.map((n) => `<span class="nm">${esc(shortName(n))}</span>`).join('');
-  const word = sh.paid ? 'Extra' : 'Serviço';
-  const cls = `k-servico${sh.paid ? ` is-pago${status === 'recebido' ? '' : ' a-receber'}` : owners.length ? ' is-alheio' : ''}`;
-  const pay = sh.paid ? ` (${status === 'recebido' ? 'recebido' : status === 'atrasado' ? 'pagamento atrasado' : 'a receber'})` : '';
-  if (owners.length) {
-    return {
-      cls,
-      long: `${word} de ${esc(ownersText(owners))}${ref}`,
-      short: `${namesShort}${refShort}`,
-      tip: `${word} de ${ownersText(owners)}${pay} · ${sh.hours}h`,
-    };
-  }
-  return sh.paid
-    ? { cls, long: `Extra${ref}`, short: `${sh.hours}h${mark}`, tip: `Extra${pay} · ${sh.hours}h` }
-    : { cls, long: `Meu serviço${ref}`, short: `${sh.hours}h`, tip: `Meu serviço · ${sh.hours}h` };
-}
-
 function cellHtml(state, d, items, today, M) {
-  const shifts = items.filter((i) => i.layer === 'servico').map((i) => i.ref.shift);
+  // Os que eu tiro vêm primeiro; o permutado (tracejado) depois.
+  const shifts = items.filter((i) => i.layer === 'servico').map((i) => i.ref.shift).sort(byDuty);
   const others = items.filter((i) => i.layer !== 'servico');
   const dots = others.slice(0, 4).map((i) => {
     const color = i.layer === 'financa' ? LAYER_COLOR.financa : state.areas.find((a) => a.id === i.area)?.color || LAYER_COLOR[i.layer];
@@ -153,13 +114,7 @@ export default {
         <div class="calendar card">
           <div class="cal-head">${head}</div>
           <div class="cal-body">${cells}</div>
-          <div class="cal-legend">
-            <span><span class="legend-sw shift-servico"></span>Meu serviço</span>
-            <span><span class="legend-sw shift-pago"></span>Extra recebido</span>
-            <span><span class="legend-sw shift-a-receber"></span>Extra a receber</span>
-            <span><span class="legend-sw shift-cobrindo"></span>Serviço de outro militar (eu tiro)</span>
-            <span><span class="legend-sw shift-coberto"></span>Permutado (outro militar tira)</span>
-          </div>
+          ${shiftLegend()}
         </div>
         ${dayPanel(state, selected, selItems, today)}
       </div>`;

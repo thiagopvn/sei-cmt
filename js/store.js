@@ -54,7 +54,10 @@ export function defaultState() {
       pomodoro: 25,
       service: { start: '08:00', hours: 24, value: 0, payRule: 'nextMonth', payDay: 10, payDays: 30 },
       incomeCategories: ['Salário', 'Serviço extra', 'Trabalhos (TCC, IPM…)', 'Outros'],
-      expenseCategories: ['Moradia', 'Alimentação', 'Transporte', 'Saúde', 'Educação', 'Filha', 'Contas da casa', 'Lazer', 'Outros'],
+      expenseCategories: ['Moradia', 'Alimentação', 'Mercado', 'Transporte', 'Transporte por app', 'Delivery e restaurantes', 'Assinaturas',
+        'Compras online', 'Vestuário', 'Saúde', 'Educação', 'Filha', 'Contas da casa', 'Envios (Pix/PicPay)', 'Lazer', 'Juros e tarifas', 'Outros'],
+      // Regras aprendidas na importação: [{ m: estabelecimento (normalizado), c: categoria }].
+      importRules: [],
       lastBackup: null,
     },
   };
@@ -130,15 +133,24 @@ function migrate(raw) {
     ...x, id: safeId(x.id), date: date(x.date), start: time(x.start), payExpected: date(x.payExpected, ''), receivedAt: date(x.receivedAt),
     owner: typeof x.owner === 'string' ? x.owner.trim().slice(0, 120) : '',
   })).filter((x) => x.date);
-  s.swaps = s.swaps.map((w) => ({ ...w, id: safeId(w.id), myDate: date(w.myDate), theirDate: date(w.theirDate), start: time(w.start), serviceId: optId(w.serviceId) }));
+  s.swaps = s.swaps.map((w) => ({ ...w, id: safeId(w.id), myDate: date(w.myDate), theirDate: date(w.theirDate), start: time(w.start), serviceId: optId(w.serviceId), fromSwapId: optId(w.fromSwapId) }));
   s.colleagues = s.colleagues.map((c) => ({ ...c, id: safeId(c.id) }));
   s.entries = s.entries.map((e) => ({
     ...e, id: safeId(e.id), cardId: optId(e.cardId), date: date(e.date), until: typeof e.until === 'string' && /^\d{4}-\d{2}$/.test(e.until) ? e.until : null,
+    invoiceMonth: typeof e.invoiceMonth === 'string' && /^\d{4}-\d{2}$/.test(e.invoiceMonth) ? e.invoiceMonth : null,
+    sinceMonth: typeof e.sinceMonth === 'string' && /^\d{4}-\d{2}$/.test(e.sinceMonth) ? e.sinceMonth : null,
+    refundedAt: date(e.refundedAt),
     settled: Object.fromEntries(Object.entries(safeKeys(e.settled)).filter(([, v]) => DATE_RE.test(v))), amounts: safeKeys(e.amounts),
   }));
   s.cards = s.cards.map((c) => ({
     ...c, id: safeId(c.id), color: color(c.color, 7), paid: Object.fromEntries(Object.entries(safeKeys(c.paid)).filter(([, v]) => DATE_RE.test(v))),
+    payments: arr(c.payments).map((p) => ({
+      ...p, id: safeId(p.id), date: date(p.date), amount: Number(p.amount) || 0,
+      month: typeof p.month === 'string' && /^\d{4}-\d{2}$/.test(p.month) ? p.month : null,
+    })).filter((p) => p.date && p.month),
   }));
+  s.settings.importRules = arr(s.settings.importRules).filter((r) => r && typeof r.m === 'string' && typeof r.c === 'string')
+    .map((r) => ({ m: r.m.slice(0, 120), c: r.c.slice(0, 60) }));
   s.timeLog = s.timeLog.map((l) => ({ ...l, id: safeId(l.id), taskId: optId(l.taskId), area: optId(l.area), date: date(l.date) })).filter((l) => l.date);
   s.timer = s.timer && typeof s.timer === 'object' && s.timer.taskId ? { ...s.timer, taskId: safeId(s.timer.taskId), area: optId(s.timer.area) } : null;
   return s;

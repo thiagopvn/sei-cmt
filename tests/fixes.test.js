@@ -176,3 +176,57 @@ test('tarefa remunerada entra em Finanças com quem paga e situação do pagamen
   assert.equal(taskPayStatus(s.tasks[0], '2026-10-06'), 'recebido');
   assert.equal(migrate(s).tasks[0].payer, 'Aluno João');
 });
+
+test('permuta da permuta: repassar o serviço que eu tiraria, em cadeia', async () => {
+  const { shiftsInRange, swapChain, dependentSwaps, swapsByService } = await import('../js/domain/shifts.js');
+  const s = defaultState();
+  s.services = [{ id: 's15', date: '2026-10-15', start: '08:00', hours: 24, type: 'ordinario' }];
+  s.swaps = [
+    // Dias tira o meu dia 15; eu tiro o dele no dia 22.
+    { id: 'w1', colleague: 'Cap Dias', myDate: '2026-10-15', theirDate: '2026-10-22', serviceId: 's15' },
+    // Não posso no dia 22: Silva tira por mim; eu tiro o dele no dia 05/11.
+    { id: 'w2', colleague: 'Sgt Silva', myDate: '2026-10-22', theirDate: '2026-11-05', fromSwapId: 'w1' },
+    // De novo: Souza tira o 05/11; eu tiro o dele no dia 12/11.
+    { id: 'w3', colleague: 'Cb Souza', myDate: '2026-11-05', theirDate: '2026-11-12', fromSwapId: 'w2' },
+  ];
+  const all = shiftsInRange(s, '2026-10-01', '2026-11-30').map((x) => `${x.date}:${x.kind}:${x.colleague}`);
+  assert.deepEqual(all, [
+    '2026-10-15:coberto:Cap Dias',
+    '2026-10-22:coberto:Sgt Silva',
+    '2026-11-05:coberto:Cb Souza',
+    '2026-11-12:cobrindo:Cb Souza',
+  ]);
+  // O repasse não pega serviço cadastrado no mesmo dia nem aparece duplicado.
+  s.services.push({ id: 's22', date: '2026-10-22', start: '08:00', hours: 24, type: 'ordinario' });
+  assert.equal(swapsByService(s).has('s22'), false);
+  assert.equal(shiftsInRange(s, '2026-10-22', '2026-10-22').filter((x) => x.active).length, 1);
+  assert.deepEqual(swapChain(s, s.swaps[1]).map((w) => w.id), ['w1', 'w2', 'w3']);
+  assert.deepEqual(dependentSwaps(s, s.swaps[0]).map((w) => w.id), ['w2', 'w3']);
+  assert.equal(migrate(s).swaps[1].fromSwapId, 'w1');
+});
+
+test('rendição fora do padrão e saída do turno', async () => {
+  const { rendicao, shiftEnd, hhLabel } = await import('../js/domain/shifts.js');
+  const settings = { service: { start: '08:00', hours: 24 } };
+  assert.equal(rendicao({ start: '08:00' }, settings), null);
+  assert.equal(rendicao({ start: '18:00' }, settings), '18:00');
+  assert.equal(hhLabel('18:00'), '18h');
+  assert.equal(hhLabel('07:30'), '07h30');
+  assert.deepEqual(shiftEnd({ date: '2026-10-22', start: '18:00', hours: 14 }), { date: '2026-10-23', time: '08:00' });
+  assert.deepEqual(shiftEnd({ date: '2026-10-22', start: '08:00', hours: 24 }), { date: '2026-10-23', time: '08:00' });
+});
+
+test('mudar a data da devolução leva junto o repasse (permuta da permuta)', async () => {
+  const { dependentSwaps, shiftsInRange } = await import('../js/domain/shifts.js');
+  const s = defaultState();
+  s.swaps = [
+    { id: 'w1', colleague: 'A', myDate: '2026-10-15', theirDate: '2026-10-22' },
+    { id: 'w2', colleague: 'B', myDate: '2026-10-22', theirDate: '2026-11-05', fromSwapId: 'w1' },
+  ];
+  // Datas desencontradas: o desfazer em cadeia ainda acha o repasse pelo vínculo.
+  s.swaps[0].theirDate = '2026-10-23';
+  assert.deepEqual(dependentSwaps(s, s.swaps[0]).map((w) => w.id), ['w2']);
+  // Com a data do repasse acompanhando, a cadeia volta a se ligar.
+  s.swaps[1].myDate = '2026-10-23';
+  assert.deepEqual(shiftsInRange(s, '2026-10-23', '2026-10-23').map((x) => `${x.kind}:${x.colleague}`), ['coberto:B']);
+});

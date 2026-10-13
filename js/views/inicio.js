@@ -6,7 +6,7 @@ import { addDays, fmtLong, fmtShort, monthOf, relDays, toMin, fromMin, hoursLabe
 import { onDutyNow, nextShift, shiftsInRange, monthStats, permutaLabel, ownersOf, ownersText } from '../domain/shifts.js';
 import { collectRange, conflicts } from '../domain/agenda.js';
 import { radar } from '../domain/insights.js';
-import { openItems } from '../domain/finance.js';
+import { openItems, remaining } from '../domain/finance.js';
 import { activeInstance } from '../domain/tasks.js';
 import { agendaItemRow, tile, emptyState } from '../ui/parts.js';
 import { quickAddHtml, bindQuickAdd } from '../ui/quickadd.js';
@@ -130,8 +130,8 @@ export default {
       </section>
 
       <div class="tiles">
-        ${tile('A receber', money(sum(toReceive, (i) => i.amount)), { ic: 'coins', to: '#/financas', sub: toReceive.length ? plural(toReceive.length, 'lançamento', 'lançamentos') : 'Nada pendente' })}
-        ${tile('A pagar · 7 dias', money(sum(toPay, (i) => i.amount)), { ic: 'wallet', to: '#/financas', sub: lateToPay.length ? `${plural(lateToPay.length, 'atrasada', 'atrasadas')}` : `${plural(toPay.length, 'conta', 'contas')}`, tone: lateToPay.length ? 'tone-critical' : '' })}
+        ${tile('A receber', money(sum(toReceive, remaining)), { ic: 'coins', to: '#/financas', sub: toReceive.length ? plural(toReceive.length, 'lançamento', 'lançamentos') : 'Nada pendente' })}
+        ${tile('A pagar · 7 dias', money(sum(toPay, remaining)), { ic: 'wallet', to: '#/financas', sub: lateToPay.length ? `${plural(lateToPay.length, 'atrasada', 'atrasadas')}` : `${plural(toPay.length, 'conta', 'contas')}`, tone: lateToPay.length ? 'tone-critical' : '' })}
         ${tile('Serviços no mês', String(ms.count), { ic: 'shield', to: '#/escala', sub: `${hoursLabel(ms.hours)}${ms.covered + ms.covering ? ` · ${plural(ms.covered + ms.covering, 'troca', 'trocas')}` : ''}` })}
         ${tile('Demandas abertas', String(openTasks.length), { ic: 'tasks', to: '#/tarefas', sub: lateTasks.length ? plural(lateTasks.length, 'atrasada', 'atrasadas') : 'Nenhuma atrasada', tone: lateTasks.length ? 'tone-critical' : '' })}
       </div>

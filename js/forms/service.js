@@ -3,12 +3,53 @@
 import { store } from '../store.js';
 import { esc, uid, parseMoney, moneyInput, plural } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
-import { todayKey, addMonths, monthOf, monthEnd, fmtDM, fmtShort, addDays } from '../lib/dates.js';
+import { todayKey, addMonths, monthOf, monthEnd, fmtDM, fmtShort, addDays, toMin, fromMin } from '../lib/dates.js';
 import { openModal, confirmDialog, toast } from '../ui/overlay.js';
 import { field, input, select, textarea, toggle, weekdayChips, segmented } from '../ui/fields.js';
-import { SERVICE_TYPES, PATTERNS, generateDates, expectedPayDate, ownersOf, ownersText, swapsByService, servicesOn } from '../domain/shifts.js';
+import { SERVICE_TYPES, PATTERNS, generateDates, expectedPayDate, ownersOf, ownersText, swapsByService, swapsBySwap, dependentSwaps, servicesOn, hhLabel } from '../domain/shifts.js';
 
-const HOURS = [6, 8, 12, 24, 48].map((h) => ({ value: h, label: `${h} horas` }));
+const HOURS = [6, 8, 10, 12, 14, 24, 48].map((h) => ({ value: h, label: `${h} horas` }));
+const hoursOptions = (h) => (HOURS.some((x) => x.value === Number(h)) ? HOURS : [...HOURS, { value: Number(h), label: `${h} horas` }]);
+
+/**
+ * Rendição (início), duração e saída calculada. Atalhos: padrão (ex.: 08h, 24h) e
+ * "Rende 18h" (entra 18h e sai no horário padrão do dia seguinte).
+ */
+function timeFields(start, hours, def) {
+  const late = '18:00';
+  const lateHours = (1440 - toMin(late) + toMin(def.start)) / 60;
+  return `<div class="grid-2">
+      ${field('Rendição (início)', input('start', start || def.start, 'type="time" required'))}
+      ${field('Duração', select('hours', hoursOptions(hours || def.hours), hours || def.hours))}
+    </div>
+    <div class="rend-quick">
+      <button type="button" class="chip" data-rend="${def.start}|${def.hours}">${icon('clock', 14)}${hhLabel(def.start)} · padrão</button>
+      <button type="button" class="chip" data-rend="${late}|${lateHours}">${icon('clock', 14)}Rende 18h (sai ${hhLabel(def.start)})</button>
+      <span class="muted small" data-saida></span>
+    </div>`;
+}
+
+function bindTimeFields(el) {
+  const st = el.querySelector('[name="start"]');
+  const hr = el.querySelector('[name="hours"]');
+  const out = el.querySelector('[data-saida]');
+  const sync = () => {
+    const m = toMin(st.value || '00:00') + Number(hr.value) * 60;
+    const days = Math.floor(m / 1440);
+    out.textContent = `Saída: ${fromMin(m)}${days === 1 ? ' do dia seguinte' : days > 1 ? ` (+${days} dias)` : ''}`;
+    el.querySelectorAll('[data-rend]').forEach((b) => b.classList.toggle('active', b.dataset.rend === `${st.value}|${hr.value}`));
+  };
+  el.querySelectorAll('[data-rend]').forEach((b) => b.addEventListener('click', () => {
+    const [s, h] = b.dataset.rend.split('|');
+    st.value = s;
+    if (![...hr.options].some((o) => o.value === h)) hr.add(new Option(`${h} horas`, h));
+    hr.value = h;
+    sync();
+  }));
+  st.addEventListener('input', sync);
+  hr.addEventListener('change', sync);
+  sync();
+}
 
 function colleagueList(state) {
   const names = new Set([...state.colleagues.map((c) => c.name), ...state.swaps.map((w) => w.colleague)].filter(Boolean));
@@ -29,12 +70,9 @@ export function openServiceForm({ service = null, date = null } = {}) {
       <span class="notice-actions"><button type="button" class="btn btn-sm" data-swap-open>Ver troca</button><button type="button" class="btn btn-sm btn-ghost-danger" data-swap-undo>${icon('undo', 14)}Desfazer permuta</button></span></span></div>` : ''}
     <div class="grid-2">
       ${field('Data', input('date', s.date, 'type="date" required'))}
-      ${field('Início', input('start', s.start, 'type="time" required'))}
-    </div>
-    <div class="grid-2">
-      ${field('Duração', select('hours', HOURS.some((h) => h.value === Number(s.hours)) ? HOURS : [...HOURS, { value: s.hours, label: `${s.hours} horas` }], s.hours))}
       ${field('Tipo', select('type', Object.fromEntries(Object.entries(SERVICE_TYPES).map(([k, v]) => [k, v.label])), s.type))}
     </div>
+    ${timeFields(s.start, s.hours, def)}
     ${field('De quem é o serviço', segmented('ownerKind', [['meu', 'Meu'], ['outro', 'De outro militar']], s.owner || (isNew && s.type === 'extra') ? 'outro' : 'meu'))}
     <div class="owner-field" ${s.owner || (isNew && s.type === 'extra') ? '' : 'hidden'}>
       ${field('De quem você vai tirar', `${input('owner', s.owner || '', 'list="colleague-list" placeholder="Ex.: Sgt Silva" autocomplete="off" maxlength="120"')}${colleagueList(state)}`, { hint: 'Se for de mais de um militar, separe por vírgula. Ex.: Sgt Silva, Cb Souza' })}
@@ -64,6 +102,7 @@ export function openServiceForm({ service = null, date = null } = {}) {
     body,
     footer,
     onMount(el) {
+      bindTimeFields(el);
       const paid = el.querySelector('[name="paid"]');
       el.querySelector('[name="type"]').addEventListener('change', (e) => {
         paid.checked = !!SERVICE_TYPES[e.target.value]?.paid;
@@ -85,7 +124,7 @@ export function openServiceForm({ service = null, date = null } = {}) {
       });
       el.querySelector('[data-swap]')?.addEventListener('click', () => {
         m.close();
-        openSwapForm({ myDate: service.date, serviceId: service.id });
+        openSwapForm({ myDate: service.date, serviceId: service.id, start: service.start, hours: service.hours });
       });
       el.querySelector('[data-swap-open]')?.addEventListener('click', () => {
         m.close();
@@ -143,18 +182,22 @@ export function openServiceForm({ service = null, date = null } = {}) {
  * sai da escala. Pede confirmação e oferece "Desfazer". Retorna true se desfez.
  */
 export async function undoSwap(swap) {
+  if (!swap) return false;
   const parts = [
-    swap.myDate ? `o seu serviço de ${fmtShort(swap.myDate)} volta a ser seu` : '',
+    swap.myDate ? `o serviço de ${fmtShort(swap.myDate)} volta para você` : '',
     swap.theirDate ? `o serviço de ${swap.colleague} em ${fmtShort(swap.theirDate)} sai da sua escala` : '',
   ].filter(Boolean);
+  // Permuta da permuta: os repasses feitos a partir desta troca perdem o sentido e saem junto.
+  const deps = dependentSwaps(store.get(), swap);
   const ok = await confirmDialog({
     title: 'Desfazer a permuta?',
-    message: `Troca com ${swap.colleague}: ${parts.join(' e ')}.`,
+    message: `Troca com ${swap.colleague}: ${parts.join(' e ')}.${deps.length ? ` O repasse feito depois (${deps.map((d) => d.colleague).join(', ')}) também será desfeito.` : ''}`,
     confirmLabel: 'Desfazer permuta',
     danger: true,
   });
   if (!ok) return false;
-  store.update((st) => { st.swaps = st.swaps.filter((x) => x.id !== swap.id); }, { undoable: true });
+  const drop = new Set([swap.id, ...deps.map((d) => d.id)]);
+  store.update((st) => { st.swaps = st.swaps.filter((x) => !drop.has(x.id)); }, { undoable: true });
   toast('Permuta desfeita', { action: { label: 'Desfazer', onClick: () => store.undo() } });
   return true;
 }
@@ -189,35 +232,35 @@ function servicePicker(state, date, selected, swapId, { orphan = false } = {}) {
 }
 
 /** Registrar ou editar uma troca de serviço. */
-export function openSwapForm({ swap = null, myDate = '', theirDate = '', serviceId = null } = {}) {
+export function openSwapForm({ swap = null, myDate = '', theirDate = '', serviceId = null, fromSwapId = null, start = '', hours = 0 } = {}) {
   const state = store.get();
   const def = state.settings.service;
   const isNew = !swap;
-  const w = swap || { colleague: '', myDate, theirDate, serviceId, start: def.start, hours: def.hours, notes: '', settled: false };
+  const w = swap || { colleague: '', myDate, theirDate, serviceId, fromSwapId, start: start || def.start, hours: Number(hours) || def.hours, notes: '', settled: false };
+  // Permuta da permuta: repasso o serviço que eu tiraria por outra troca.
+  const origin = w.fromSwapId ? state.swaps.find((x) => x.id === w.fromSwapId) : null;
   // Troca antiga sem serviceId: parte do serviço que hoje aparece como permutado.
   const linkedId = w.serviceId || (swap ? [...swapsByService(state)].find(([, x]) => x.id === swap.id)?.[0] : null) || null;
   // Troca que aponta um serviço excluído ou de outro dia: não troca de serviço sem o usuário escolher.
   const orphan = !!(swap?.serviceId && swap.myDate && !state.services.some((x) => x.id === swap.serviceId && x.date === swap.myDate));
   const phone = state.colleagues.find((c) => c.name === w.colleague)?.phone || '';
   const body = `
-    <p class="muted small">Uma troca tem dois lados. Preencha o que já estiver combinado; o outro pode ficar “a combinar”.</p>
+    ${origin ? `<div class="notice notice-swap">${icon('swap', 16)}<span><strong>Permuta da permuta.</strong> Você vai repassar o serviço de <strong>${esc(origin.colleague)}</strong> (${origin.theirDate ? fmtShort(origin.theirDate) : 'a combinar'}) que tiraria pela troca do seu dia ${origin.myDate ? fmtDM(origin.myDate) : '—'}.</span></div>`
+      : '<p class="muted small">Uma troca tem dois lados. Preencha o que já estiver combinado; o outro pode ficar “a combinar”.</p>'}
     ${field('Militar', `${input('colleague', w.colleague, 'required autofocus list="colleague-list" placeholder="Ex.: Sgt Silva" autocomplete="off"')}${colleagueList(state)}`)}
     ${field('WhatsApp do militar (opcional)', input('phone', phone, 'type="tel" inputmode="tel" placeholder="(21) 99999-9999"'))}
     <div class="swap-legs">
       <div class="swap-leg">
         <span class="swap-leg-ic out">${icon('arrowUp', 16)}</span>
-        ${field('Ele tira o MEU serviço em', input('myDate', w.myDate || '', 'type="date"'), { hint: 'Deixe vazio se ainda não foi combinado.' })}
+        ${field(origin ? 'Ele tira por mim o serviço de' : 'Ele tira o MEU serviço em', input('myDate', w.myDate || '', 'type="date"'), { hint: origin ? 'O dia do serviço que você está repassando.' : 'Deixe vazio se ainda não foi combinado.' })}
       </div>
-      <div class="swap-svc">${servicePicker(state, w.myDate, linkedId, swap?.id, { orphan })}</div>
+      <div class="swap-svc">${origin ? '' : servicePicker(state, w.myDate, linkedId, swap?.id, { orphan })}</div>
       <div class="swap-leg">
         <span class="swap-leg-ic in">${icon('arrowDown', 16)}</span>
         ${field('Eu tiro o serviço DELE em', input('theirDate', w.theirDate || '', 'type="date"'), { hint: 'A devolução (ou o dia em que eu cubro).' })}
       </div>
     </div>
-    <div class="grid-2">
-      ${field('Início do turno', input('start', w.start || def.start, 'type="time"'))}
-      ${field('Duração', select('hours', HOURS, w.hours || def.hours))}
-    </div>
+    ${timeFields(w.start, w.hours, def)}
     ${field('Observações', textarea('notes', w.notes))}
     ${swap ? toggle('settled', w.settled, 'Marcar troca como quitada') : ''}
   `;
@@ -226,11 +269,16 @@ export function openSwapForm({ swap = null, myDate = '', theirDate = '', service
     <span class="spacer"></span>
     <button type="submit" class="btn btn-primary">${isNew ? 'Registrar troca' : 'Salvar'}</button>`;
   const m = openModal({
-    title: isNew ? 'Registrar troca' : 'Troca de serviço',
+    title: origin ? (isNew ? 'Repassar serviço' : 'Repasse de serviço') : isNew ? 'Registrar troca' : 'Troca de serviço',
     body,
     footer,
     onMount(el) {
+      bindTimeFields(el);
       el.querySelector('[name="myDate"]').addEventListener('change', (e) => {
+        if (origin && e.target.value === origin.theirDate) {
+          el.querySelector('.swap-svc').innerHTML = '';
+          return;
+        }
         const cur = el.querySelector('[name="serviceId"]')?.value || linkedId;
         // De volta ao dia original da troca órfã: oferece "Nenhum" de novo.
         const again = orphan && e.target.value === swap.myDate;
@@ -249,9 +297,18 @@ export function openSwapForm({ swap = null, myDate = '', theirDate = '', service
         return false;
       }
       const name = fd.get('colleague').trim();
-      // Qual serviço foi trocado: o escolhido na lista ou, sem lista, o único serviço do dia.
       const st = store.get();
-      const sameDay = my ? servicesOn(st, my) : [];
+      // Repasse (permuta da permuta): vale enquanto o dia for o do serviço que eu tiraria pela troca de origem.
+      const passing = origin && my === origin.theirDate;
+      if (passing) {
+        const taken = swapsBySwap(st).get(origin.id);
+        if (taken && taken.id !== swap?.id) {
+          toast(`Esse serviço já foi repassado para ${taken.colleague}. Abra aquela troca para mudar.`, { timeout: 6000 });
+          return false;
+        }
+      }
+      // Qual serviço foi trocado: o escolhido na lista ou, sem lista, o único serviço do dia.
+      const sameDay = my && !passing ? servicesOn(st, my) : [];
       const chosen = fd.get('serviceId');
       const svc = chosen !== null ? sameDay.find((x) => x.id === chosen) || null : sameDay.length === 1 ? sameDay[0] : null;
       const holder = svc && swapsByService(st).get(svc.id);
@@ -263,18 +320,25 @@ export function openSwapForm({ swap = null, myDate = '', theirDate = '', service
       // "Nenhum" numa troca órfã: mantém a referência antiga em vez de deixá-la pegar outro serviço.
       const keep = orphan && my === swap.myDate && (chosen === '' || chosen === null) ? swap.serviceId : null;
       const data = {
-        colleague: name, myDate: my, theirDate: their, serviceId: svc?.id || keep, start: fd.get('start'), hours: Number(fd.get('hours')) || 24,
+        colleague: name, myDate: my, theirDate: their, serviceId: passing ? null : svc?.id || keep, fromSwapId: passing ? origin.id : null,
+        start: fd.get('start'), hours: Number(fd.get('hours')) || 24,
         notes: fd.get('notes').trim(), settled: fd.get('settled') === 'on',
       };
+      // Mudou a data em que eu tiraria o serviço dele: o repasse desse serviço (permuta da permuta) vai junto.
+      const passedOn = !isNew && their && their !== swap.theirDate ? swapsBySwap(st).get(swap.id) : null;
       store.update((st) => {
         if (isNew) st.swaps.push({ id: uid(), ...data, createdAt: new Date().toISOString() });
         else Object.assign(st.swaps.find((x) => x.id === swap.id), data);
+        if (passedOn) {
+          const dep = st.swaps.find((x) => x.id === passedOn.id);
+          if (dep) dep.myDate = their;
+        }
         const ph = fd.get('phone').trim();
         const c = st.colleagues.find((x) => x.name === name);
         if (c) c.phone = ph || c.phone;
         else if (name) st.colleagues.push({ id: uid(), name, phone: ph });
       });
-      toast(isNew ? 'Troca registrada' : 'Troca salva');
+      toast(passing && isNew ? `Serviço repassado para ${name}` : isNew ? 'Troca registrada' : 'Troca salva');
     },
   });
   return m;

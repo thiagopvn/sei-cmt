@@ -203,12 +203,15 @@ export function openInvoice(cardId, M) {
     const inv = invoice(state, card, M);
     return `
       <div class="invoice-head">
-        <div><span class="muted small">Total da fatura</span><strong class="big">${money(inv.total)}</strong></div>
+        <div><span class="muted small">Total da fatura</span><strong class="big">${money(inv.total)}</strong>
+          ${inv.paidAmount && !inv.paidAt ? `<span class="small">Já pago ${money(inv.paidAmount)} · <strong>falta ${money(inv.balance)}</strong></span>` : ''}</div>
         <div class="invoice-dates">
           <span>Fecha ${fmtDM(inv.closingDate)}</span><span>Vence ${fmtDM(inv.dueDate)}</span>
           ${inv.paidAt ? `<span class="pill pill-good">${icon('check', 13)}Paga em ${fmtDM(inv.paidAt)}</span>` : inv.dueDate < todayKey() && inv.total > 0 ? `<span class="pill pill-critical">${icon('alert', 13)}Vencida</span>` : ''}
         </div>
       </div>
+      ${inv.payments.length ? `<details class="inv-payments"><summary>${icon('check', 14)}${inv.payments.length} pagamento(s) desta fatura · ${money(inv.paidAmount)}</summary>
+        ${inv.payments.map((p) => `<div class="im-merchant"><span>${fmtDM(p.date)}</span><span class="amount">${money(p.amount)}</span></div>`).join('')}</details>` : ''}
       <div class="list">${inv.items.length ? inv.items.map((it) => `
         <div class="row" role="button" tabindex="0" data-entry="${esc(it.entry.id)}">
           <div class="row-main">
@@ -230,12 +233,17 @@ export function openInvoice(cardId, M) {
       const payBtn = el.querySelector('[data-pay]');
       const refresh = () => {
         el.querySelector('[data-invoice]').innerHTML = render();
-        const c = store.get().cards.find((x) => x.id === cardId);
-        payBtn.textContent = c?.paid?.[M] ? 'Desmarcar pagamento' : 'Marcar fatura como paga';
+        const st = store.get();
+        const c = st.cards.find((x) => x.id === cardId);
+        // Quitada pelos pagamentos importados: não há marca manual para desfazer.
+        const auto = c && !c.paid?.[M] && invoice(st, c, M).paidAt;
+        payBtn.disabled = !!auto;
+        payBtn.textContent = auto ? 'Quitada pelos pagamentos' : c?.paid?.[M] ? 'Desmarcar pagamento' : 'Marcar fatura como paga';
       };
       refresh();
       unsub = store.subscribe(refresh);
       payBtn.addEventListener('click', () => {
+        if (payBtn.disabled) return;
         store.update((s) => {
           const c = s.cards.find((x) => x.id === cardId);
           c.paid = c.paid || {};
