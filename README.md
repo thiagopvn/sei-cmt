@@ -23,7 +23,8 @@ Aplicativo (PWA) para organizar a vida pessoal e profissional em um só lugar: *
 - Contas fixas mensais ou anuais (aluguel, creche, IPVA…), receitas e despesas avulsas.
 - **Cartões de crédito** com dia de fechamento e vencimento; compras parceladas caem sozinhas nas faturas certas; limite usado.
 - Serviços extras e trabalhos pagos (TCC, IPM, sindicância…) entram automaticamente em “A receber”.
-- **Importar fatura ou extrato (CSV)** com prévia antes de salvar: não duplica (reimportar só traz o que é novo), anula estornos (o valor que vai e volta), separa pagamentos da fatura (anterior x adiantamento), transforma “Parcela x/y” em compra parcelada sem repetir no mês seguinte, categoriza sozinho e lembra as categorias que você corrigir.
+- **Importar fatura ou extrato (CSV ou OFX)** com prévia antes de salvar: não duplica (reimportar só traz o que é novo), anula estornos (o valor que vai e volta), separa pagamentos da fatura (anterior x adiantamento), transforma “Parcela x/y” em compra parcelada sem repetir no mês seguinte, categoriza sozinho e lembra as categorias que você corrigir.
+- **Limites de gasto por categoria** (ex.: Uber/99 até R$ 400 no mês): barra de progresso no Resumo e aviso no Radar ao passar de 80% e ao estourar. No cartão, conta o que foi comprado no mês.
 - **Raio-x da fatura aberta**: falta pagar, já pago, projeção até o fechamento, para onde foi o dinheiro, corridas por app, assinaturas (inclusive assinaturas de IA repetidas), envios por PicPay/Pix no cartão comparados ao dinheiro dos extras, parcelas já comprometidas e maiores compras.
 - Gráficos de para onde vai o dinheiro e de fontes de renda.
 

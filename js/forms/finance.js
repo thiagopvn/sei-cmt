@@ -7,6 +7,7 @@ import { todayKey, fmtDM, fmtShort, monthLabel } from '../lib/dates.js';
 import { openModal, confirmDialog, toast } from '../ui/overlay.js';
 import { field, input, select, textarea, toggle, segmented } from '../ui/fields.js';
 import { invoice, invoiceDueMonth } from '../domain/finance.js';
+import { spentByCategory, averageSpent } from '../domain/budgets.js';
 
 /**
  * @param {object} o
@@ -260,3 +261,31 @@ export function openInvoice(cardId, M) {
   return m;
 }
 
+
+/** Limites mensais por categoria: mostra o gasto do mês e a média para ajudar a escolher. */
+export function openBudgetForm({ month }) {
+  const state = store.get();
+  const current = Object.fromEntries((state.settings.budgets || []).map((b) => [b.c, b.v]));
+  const spent = spentByCategory(state, month);
+  const cats = [...new Set([...Object.keys(current), ...state.settings.expenseCategories])];
+  const body = `
+    <p class="muted small">Deixe em branco a categoria sem limite. O app avisa no Radar quando passar de 80% e quando estourar.
+      Cartão conta pelas compras do mês (que vão para a fatura do mês seguinte).</p>
+    <div class="budget-form">${cats.map((c, i) => {
+      const avg = averageSpent(state, month, c);
+      return `<label class="budget-line">
+        <span class="budget-cat"><strong>${esc(c)}</strong><small class="muted">este mês ${money(spent.get(c) || 0)}${avg ? ` · média ${money(avg)}` : ''}</small></span>
+        <input name="b${i}" data-cat="${esc(c)}" value="${esc(moneyInput(current[c]))}" inputmode="decimal" placeholder="sem limite" aria-label="Limite de ${esc(c)}">
+      </label>`;
+    }).join('')}</div>`;
+  return openModal({
+    title: 'Limites de gasto por mês',
+    body,
+    footer: '<span class="spacer"></span><button type="submit" class="btn btn-primary">Salvar limites</button>',
+    onSubmit(fd, form) {
+      const budgets = [...form.querySelectorAll('[data-cat]')].map((inp) => ({ c: inp.dataset.cat, v: parseMoney(inp.value) })).filter((b) => b.v > 0);
+      store.update((s) => { s.settings.budgets = budgets; });
+      toast(budgets.length ? `${budgets.length} limite(s) salvo(s)` : 'Limites removidos');
+    },
+  });
+}

@@ -208,7 +208,10 @@ export function openItems(state, today, days = 7, lookbackMonths = 6) {
   return out.sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/** Despesas do mês por categoria (compras no cartão entram pela categoria da compra). */
+/**
+ * Gastos do mês por categoria (consumo): lançamentos fora do cartão no mês + compras do cartão
+ * feitas no mês — que caem na fatura que vence no mês seguinte (ciclo M → fatura M+1).
+ */
 export function expensesByCategory(state, M) {
   const map = new Map();
   const add = (cat, v) => map.set(cat || 'Outros', (map.get(cat || 'Outros') || 0) + v);
@@ -216,7 +219,7 @@ export function expensesByCategory(state, M) {
     if (e.kind !== 'despesa') continue;
     for (const o of entryOccurrences(e, M)) add(e.category, occAmount(e, o.key));
   }
-  for (const c of state.cards) for (const it of invoice(state, c, M).items) add(it.entry.category, it.amount);
+  for (const c of state.cards) for (const it of invoice(state, c, addMonths(M, 1)).items) add(it.entry.category, it.amount);
   return [...map.entries()].map(([category, value]) => ({ category, value: Math.round(value * 100) / 100 }))
     .filter((x) => x.value > 0).sort((a, b) => b.value - a.value);
 }

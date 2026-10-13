@@ -228,3 +228,48 @@ test('saídas pagas do mês contam o pagamento parcial da fatura', async () => {
   assert.equal(sm.expenseExpected, 500);
   assert.equal(sm.expenseDone, 100);
 });
+
+test('OFX: conta e cartão, FITID evita duplicar', () => {
+  const s = defaultState();
+  const conta = `OFXHEADER:100
+<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>
+<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20261005120000[-3:BRT]<TRNAMT>-80.00<FITID>f1<MEMO>Compra no débito - Padaria</STMTTRN>
+<STMTTRN><TRNTYPE>CREDIT<DTPOSTED>20261006<TRNAMT>2500.00<FITID>f2<NAME>Transferência recebida - Salario</STMTTRN>
+</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>`;
+  const p = parseStatement(conta, 'extrato.ofx');
+  assert.equal(p.kind, 'account');
+  assert.deepEqual(p.tx.map((t) => [t.date, t.out, t.extId]), [['2026-10-05', 80, 'f1'], ['2026-10-06', -2500, 'f2']]);
+  applyImport(s, analyzeStatement(p, { state: s, categorize: cat }), { uid });
+  assert.equal(analyzeStatement(p, { state: s, categorize: cat }).totals.newCount, 0);
+
+  const cartao = `<OFX><CREDITCARDMSGSRSV1><CCSTMTTRNRS><CCSTMTRS><BANKTRANLIST>
+<STMTTRN><DTPOSTED>20261003<TRNAMT>-45.90</TRNAMT><FITID>c1</FITID><MEMO>Netflix.Com</MEMO></STMTTRN>
+<STMTTRN><DTPOSTED>20261004<TRNAMT>100.00</TRNAMT><FITID>c2</FITID><MEMO>Pagamento recebido</MEMO></STMTTRN>
+</BANKTRANLIST></CCSTMTRS></CCSTMTTRNRS></CREDITCARDMSGSRSV1></OFX>`;
+  const pc = parseStatement(cartao, 'Banco_2026-11-08.ofx');
+  assert.equal(pc.kind, 'card');
+  assert.equal(pc.dueDate, '2026-11-08');
+  const an = analyzeStatement(pc, { invoiceMonth: '2026-11', dueDay: 8, state: s, categorize: cat });
+  assert.deepEqual(an.rows.map((r) => r.type), ['purchase', 'payment']);
+  // Pagou mais do que gastou: 45,90 − 100 = saldo a favor de 54,10.
+  assert.equal(an.totals.open, -54.1);
+});
+
+test('limites por categoria: gasto do mês pelo ciclo do cartão', async () => {
+  const { budgetStatus } = await import('../js/domain/budgets.js');
+  const s = defaultState();
+  const c = { id: 'c', name: 'Banco', closingDay: 1, dueDay: 8, paid: {}, payments: [] };
+  s.cards.push(c);
+  s.entries.push(
+    { id: 'u1', kind: 'despesa', description: 'Uber', amount: 300, date: '2026-10-05', category: 'Transporte por app', cardId: 'c', installments: 1 },
+    { id: 'u2', kind: 'despesa', description: '99', amount: 150, date: '2026-10-06', category: 'Transporte por app', cardId: 'c', installments: 1 },
+    { id: 'm1', kind: 'despesa', description: 'Feira', amount: 90, date: '2026-10-07', category: 'Mercado', settled: { once: '2026-10-07' } },
+  );
+  s.settings.budgets = [{ c: 'Transporte por app', v: 400 }, { c: 'Mercado', v: 100 }];
+  const st = budgetStatus(s, '2026-10');
+  assert.deepEqual(st.map((b) => [b.category, b.spent, b.level]), [['Transporte por app', 450, 'over'], ['Mercado', 90, 'near']]);
+  const { radar } = await import('../js/domain/insights.js');
+  const titles = radar(s, '2026-10-10').map((r) => r.title);
+  assert.ok(titles.includes('Limite estourado: Transporte por app'));
+  assert.ok(titles.some((t) => t.startsWith('Perto do limite: Mercado')));
+});

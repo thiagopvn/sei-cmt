@@ -3,7 +3,7 @@
 import { esc, money, plural, sum } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addDays, fmtLong, fmtShort, monthOf, relDays, toMin, fromMin, hoursLabel } from '../lib/dates.js';
-import { onDutyNow, nextShift, shiftsInRange, monthStats, permutaLabel, ownersOf, ownersText } from '../domain/shifts.js';
+import { onDutyNow, nextShift, shiftsInRange, monthStats, permutaLabel, ownersOf, ownersText, rendicao } from '../domain/shifts.js';
 import { collectRange, conflicts } from '../domain/agenda.js';
 import { radar } from '../domain/insights.js';
 import { openItems, remaining } from '../domain/finance.js';
@@ -36,7 +36,7 @@ function statusCard(state, today) {
   const covered = shiftsInRange(state, today, today).find((s) => s.kind === 'coberto');
   const next = nextShift(state, today);
   const nextTxt = next
-    ? `Próximo serviço ${relDays(next.date, today)} (${fmtShort(next.date)}) às ${next.start}${next.owner ? ` · serviço de ${esc(ownersText(ownersOf(next)))}` : ' · meu serviço'}`
+    ? `Próximo serviço ${relDays(next.date, today)} (${fmtShort(next.date)}) ${rendicao(next, state.settings) ? `· rende às ${next.start} (fora do padrão)` : `às ${next.start}`}${next.owner ? ` · serviço de ${esc(ownersText(ownersOf(next)))}` : ' · meu serviço'}`
     : 'Nenhum serviço cadastrado à frente';
   return `<div class="status-card">
     <span class="status-ic">${icon(covered ? 'swap' : 'sun', 22)}</span>

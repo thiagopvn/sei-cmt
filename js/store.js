@@ -58,6 +58,8 @@ export function defaultState() {
         'Compras online', 'Vestuário', 'Saúde', 'Educação', 'Filha', 'Contas da casa', 'Envios (Pix/PicPay)', 'Lazer', 'Juros e tarifas', 'Outros'],
       // Regras aprendidas na importação: [{ m: estabelecimento (normalizado), c: categoria }].
       importRules: [],
+      // Limites mensais por categoria: [{ c: categoria, v: valor }].
+      budgets: [],
       lastBackup: null,
     },
   };
@@ -149,6 +151,8 @@ function migrate(raw) {
       month: typeof p.month === 'string' && /^\d{4}-\d{2}$/.test(p.month) ? p.month : null,
     })).filter((p) => p.date && p.month),
   }));
+  s.settings.budgets = arr(s.settings.budgets).filter((b) => b && typeof b.c === 'string' && Number(b.v) > 0)
+    .map((b) => ({ c: b.c.slice(0, 60), v: Math.round(Number(b.v) * 100) / 100 }));
   s.settings.importRules = arr(s.settings.importRules).filter((r) => r && typeof r.m === 'string' && typeof r.c === 'string')
     .map((r) => ({ m: r.m.slice(0, 120), c: r.c.slice(0, 60) }));
   s.timeLog = s.timeLog.map((l) => ({ ...l, id: safeId(l.id), taskId: optId(l.taskId), area: optId(l.area), date: date(l.date) })).filter((l) => l.date);

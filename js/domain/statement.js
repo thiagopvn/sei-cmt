@@ -87,10 +87,34 @@ export function merchantKey(title) {
 export const cleanTitle = (title) => String(title || '').replace(INSTALLMENT_RE, '').trim();
 
 /**
- * Lê o arquivo. Retorna { kind: 'card'|'account', tx: [{ date, title, out, extId }], dueDate, bad }
+ * OFX (Money/Quicken, exportado pela maioria dos bancos): cada <STMTTRN> vira um lançamento.
+ * Valor negativo = saída (vale para conta e cartão); FITID é o identificador único da transação.
+ */
+export function parseOfx(text, fileName = '') {
+  const kind = /<CCSTMTRS>|<CREDITCARDMSGSRSV1>/i.test(text) ? 'card' : 'account';
+  const tag = (block, name) => (block.match(new RegExp(`<${name}>([^<\\r\\n]*)`, 'i'))?.[1] || '').trim();
+  const tx = [];
+  let bad = 0;
+  for (const m of String(text).matchAll(/<STMTTRN>([\s\S]*?)(?=<\/STMTTRN>|<STMTTRN>|<\/BANKTRANLIST>)/gi)) {
+    const b = m[1];
+    const d = tag(b, 'DTPOSTED').match(/^(\d{4})(\d{2})(\d{2})/);
+    const date = d && isValidKey(`${d[1]}-${d[2]}-${d[3]}`) ? `${d[1]}-${d[2]}-${d[3]}` : null;
+    const amount = parseAmount(tag(b, 'TRNAMT'));
+    const title = (tag(b, 'MEMO') || tag(b, 'NAME')).replace(/&amp;/g, '&');
+    if (!date || !Number.isFinite(amount) || !title || amount === 0) { bad++; continue; }
+    tx.push({ date, title, out: round2(-amount), extId: tag(b, 'FITID') || null });
+  }
+  const m = String(fileName).match(/(\d{4})-(\d{2})-(\d{2})/);
+  const dueDate = kind === 'card' && m && isValidKey(`${m[1]}-${m[2]}-${m[3]}`) ? `${m[1]}-${m[2]}-${m[3]}` : null;
+  return { kind, tx, dueDate, bad };
+}
+
+/**
+ * Lê o arquivo (CSV ou OFX). Retorna { kind: 'card'|'account', tx: [{ date, title, out, extId }], dueDate, bad }
  * `out` > 0 = dinheiro saindo (gasto/compra); `out` < 0 = entrando (pagamento, estorno, receita).
  */
 export function parseStatement(text, fileName = '') {
+  if (/<OFX>|<STMTTRN>/i.test(String(text).slice(0, 20000))) return parseOfx(text, fileName);
   const rows = parseCsv(text);
   if (!rows.length) return { kind: 'card', tx: [], dueDate: null, bad: 0 };
   const head = rows[0].map(normalize);
