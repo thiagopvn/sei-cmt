@@ -11,8 +11,11 @@ import { shiftTone, dutyTag, rendPill } from './shiftui.js';
 export const areaOf = (state, id) => state.areas.find((a) => a.id === id) || null;
 export const typeOf = (state, id) => state.types.find((t) => t.id === id) || null;
 
-/** Cor de marcação: um slot da paleta (1–8), 'accent' (vermelho do brasão), 'swap', 'paid' (recebido) ou 'due' (a receber). */
-const NAMED = { accent: 'var(--accent)', swap: 'var(--swap-bg)', paid: 'var(--paid-bg)', due: 'var(--due-bg)', perm: 'var(--perm-line)' };
+/**
+ * Cor de marcação: um slot da paleta (1–8), 'duty' (meu serviço: vermelho do brasão), 'accent' (cor da conta),
+ * 'swap', 'paid' (recebido) ou 'due' (a receber).
+ */
+const NAMED = { duty: 'var(--duty)', accent: 'var(--accent)', swap: 'var(--swap-bg)', paid: 'var(--paid-bg)', due: 'var(--due-bg)', perm: 'var(--perm-line)' };
 export const colorVar = (color) => NAMED[color] || `var(--c${Number(color) || 0})`;
 
 export const dot = (color) => `<span class="dot" style="--c: ${colorVar(color)}"></span>`;
@@ -120,8 +123,8 @@ export function chips(items, active, action, { all = null } = {}) {
       data-action="${action}" data-value="${esc(id ?? '')}">${color ? dot(color) : ''}${esc(label)}</button>`).join('')}</div>`;
 }
 
-export const LAYER_COLOR = { servico: 'accent', troca: 'swap', tarefa: 2, evento: 5, rotina: 3, financa: 4 };
-const TONE_COLOR = { meu: 'accent', outro: 'swap', pago: 'paid', areceber: 'due', perm: 'perm' };
+export const LAYER_COLOR = { servico: 'duty', troca: 'swap', tarefa: 2, evento: 5, rotina: 3, financa: 4 };
+const TONE_COLOR = { meu: 'duty', outro: 'swap', pago: 'paid', areceber: 'due', perm: 'perm' };
 
 export function agendaItemRow(state, it) {
   const sh = it.layer === 'servico' ? it.ref.shift : null;

@@ -5,7 +5,7 @@ import { todayKey } from './lib/dates.js';
 import { icon } from './lib/icons.js';
 import { esc } from './lib/util.js';
 import { actions, newItemMenu } from './actions.js';
-import { closeTop, hasOverlay, toast } from './ui/overlay.js';
+import { clearToasts, closeTop, hasOverlay, toast } from './ui/overlay.js';
 import { checkAlarms, showNotification } from './notify.js';
 import { elapsedSec, fmtClock, stopTimer, togglePomodoro, fmtDuration } from './timer.js';
 import { openItems } from './domain/finance.js';
@@ -52,10 +52,13 @@ function buildShell() {
   document.querySelectorAll('[data-icon]').forEach((el) => { el.innerHTML = icon(el.dataset.icon, Number(el.dataset.size) || 20); });
 }
 
-function applyTheme(theme) {
+function applyTheme(theme, accent) {
   const root = document.documentElement;
   if (theme === 'light' || theme === 'dark') root.dataset.theme = theme;
   else delete root.dataset.theme;
+  // Cor do app escolhida por conta (cada pessoa com a sua área e a sua cara).
+  if (accent && accent !== 'vermelho') root.dataset.accent = accent;
+  else delete root.dataset.accent;
   const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg || '#f4f5f7');
 }
@@ -117,7 +120,8 @@ function render() {
   if (changedView || raw !== currentRaw) view.enter?.(params);
   currentId = id;
   currentRaw = raw;
-  applyTheme(state.settings.theme);
+  applyTheme(state.settings.theme, state.settings.accent);
+  renderWho();
   const el = document.getElementById('view');
   const y = window.scrollY;
   el.innerHTML = view.render({ state, today, params });
@@ -198,7 +202,22 @@ const SYNC_LABEL = {
   error: 'Erro na sincronização',
 };
 
+/** "Área de Lucila" / "Área de Thiago" no topo: deixa claro de quem é a área aberta. */
+function renderWho() {
+  const u = cloud.info.user;
+  // Sem nome no perfil nem na conta Google: usa o começo do e-mail ("thiago.eear108" → "Thiago").
+  const fromEmail = (u?.email || '').split('@')[0].split(/[._\-+\d]/)[0];
+  const raw = (store.get().profile.name || u?.name || '').trim().split(/\s+/)[0] || fromEmail;
+  const first = raw ? raw[0].toUpperCase() + raw.slice(1) : '';
+  for (const el of document.querySelectorAll('[data-who]')) {
+    el.hidden = !u || !first;
+    el.textContent = u && first ? `Área de ${first}` : '';
+    if (u) el.title = `Conectado como ${u.email}`;
+  }
+}
+
 function renderSync(info) {
+  renderWho();
   for (const el of document.querySelectorAll('[data-sync]')) {
     if (!info.user) {
       el.hidden = true;
@@ -224,6 +243,9 @@ function showApp() {
 function showLogin(message = '', kind = 'error') {
   phase = 'login';
   document.body.classList.add('auth-screen');
+  // Nada da conta anterior fica à vista na tela de entrada (aviso "Tarefa criada: …", janela aberta).
+  clearToasts();
+  while (closeTop());
   renderTimer({ timer: null });
   renderLogin(document.getElementById('view'), {
     message,
@@ -292,7 +314,7 @@ function init() {
   window.addEventListener('pauta:render', render);
   document.addEventListener('click', onClick);
   document.addEventListener('keydown', onKey);
-  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => applyTheme(store.get().settings.theme));
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => applyTheme(store.get().settings.theme, store.get().settings.accent));
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') minuteTick();
   });

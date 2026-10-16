@@ -160,7 +160,12 @@ function startSession(user) {
     if (session !== s) return;
     const next = toPaths(state);
     if (meta?.remote) {
+      // Item ainda na fila que voltou da nuvem ajustado pela normalização (ex.: campo padrão
+      // acrescentado): envia a versão ajustada. Sem isso a confirmação do envio anterior nunca
+      // bate com o aparelho e o item fica "Enviando…" para sempre.
+      const adjusted = [...s.pending].filter((p) => (s.lastMap.get(p) ?? null) !== (next.get(p) ?? null));
       s.lastMap = next;
+      if (adjusted.length) pushPaths(adjusted);
       return;
     }
     const updates = diff(s.lastMap, next);
@@ -327,6 +332,18 @@ export const cloud = {
         return;
       }
       if (user) {
+        // Áreas separadas: se este aparelho guardava a cópia de OUTRA conta (ex.: a sessão dela
+        // expirou sem "Sair"), apaga antes de abrir qualquer tela — nada de uma aparece para a outra.
+        // Ordem importa (igual ao "Sair"): desmarca o dono ANTES de limpar, senão a limpeza
+        // entraria na fila de envio da outra conta e apagaria os dados dela na nuvem depois.
+        const owner = localStorage.getItem(OWNER_KEY);
+        if (owner && owner !== user.uid) {
+          stopSession();
+          localStorage.removeItem(pendingKey(owner));
+          localStorage.removeItem(OWNER_KEY);
+          store.clearLocal();
+          localStorage.setItem(OWNER_KEY, user.uid);
+        }
         set({ user: { uid: user.uid, email: user.email, name: user.displayName || '' } });
         if (!session || session.uid !== user.uid) {
           stopSession();

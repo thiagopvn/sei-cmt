@@ -230,3 +230,10 @@ test('mudar a data da devolução leva junto o repasse (permuta da permuta)', as
   s.swaps[1].myDate = '2026-10-23';
   assert.deepEqual(shiftsInRange(s, '2026-10-23', '2026-10-23').map((x) => `${x.kind}:${x.colleague}`), ['coberto:B']);
 });
+
+test('cor do app: só aceita as cores conhecidas (cada conta tem a sua)', () => {
+  assert.equal(migrate({ settings: { accent: 'rosa' } }).settings.accent, 'rosa');
+  assert.equal(migrate({ settings: { accent: 'azul' } }).settings.accent, 'vermelho');
+  assert.equal(migrate({ settings: { accent: '"><script>' } }).settings.accent, 'vermelho');
+  assert.equal(migrate({}).settings.accent, 'vermelho');
+});

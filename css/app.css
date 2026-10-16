@@ -16,6 +16,7 @@
   --accent-hover: #8a0605;
   --accent-soft: #fbeae9;
   --accent-text: #a60807;
+  --duty: #a60807; /* "Meu serviço": sempre o vermelho do brasão, qualquer que seja a cor da conta */
   --brand-dark: #363535;
   --on-accent: #ffffff;
   --good: #0ca30c;
@@ -83,6 +84,7 @@
     --accent-hover: #d6302c;
     --accent-soft: #3a1514;
     --accent-text: #ff8f8a;
+    --duty: #c21b18;
     --brand-dark: #242323;
     --on-accent: #ffffff;
     --good-soft: #142a18;
@@ -132,6 +134,7 @@
   --accent-hover: #d6302c;
   --accent-soft: #3a1514;
   --accent-text: #ff8f8a;
+  --duty: #c21b18;
   --brand-dark: #242323;
   --on-accent: #ffffff;
   --good-soft: #142a18;
@@ -227,6 +230,8 @@ button { cursor: pointer; }
   font-size: 18px;
   letter-spacing: -.02em;
 }
+.brand-txt { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-who { font-size: 11.5px; font-weight: 650; letter-spacing: 0; color: var(--accent-text); margin-top: 2px; }
 .brand-logo {
   width: 36px;
   height: 36px;
@@ -904,7 +909,7 @@ a.tile:hover { border-color: var(--border-strong); }
 .cal-more-shift { font-size: 10px; font-weight: 700; color: var(--text-3); }
 /* Tons: sólido = eu tiro; tracejado = permutado (não tiro) */
 .cal-shift { white-space: normal; line-height: 1.15; text-overflow: clip; text-align: center; }
-.cal-shift.t-meu { background: var(--accent); color: #fff; }
+.cal-shift.t-meu { background: var(--duty); color: #fff; }
 .cal-shift.t-outro { background: var(--swap-bg); color: var(--swap-fg); }
 .cal-shift.t-pago { background: var(--paid-bg); color: #fff; }
 .cal-shift.t-areceber { background: var(--due-bg); color: #fff; }
@@ -930,14 +935,14 @@ a.tile:hover { border-color: var(--border-strong); }
 .cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 4px 2px; font-size: 12px; color: var(--text-3); }
 .cal-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .legend-sw { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
-.legend-sw.t-meu { background: var(--accent); }
+.legend-sw.t-meu { background: var(--duty); }
 .legend-sw.t-outro { background: var(--swap-bg); }
 .legend-sw.t-pago { background: var(--paid-bg); }
 .legend-sw.t-areceber { background: var(--due-bg); }
 .legend-sw.t-perm { background: transparent; outline: 1.5px dashed var(--perm-line); outline-offset: -1.5px; }
 /* "Você tira" / "Não tira" nas listas e na ficha */
 .duty-tag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; line-height: 18px; white-space: nowrap; }
-.duty-tag.t-meu { background: var(--accent); color: #fff; }
+.duty-tag.t-meu { background: var(--duty); color: #fff; }
 .duty-tag.t-outro { background: var(--swap-bg); color: var(--swap-fg); }
 .duty-tag.t-pago { background: var(--paid-bg); color: #fff; }
 .duty-tag.t-areceber { background: var(--due-bg); color: #fff; }
@@ -1053,7 +1058,7 @@ a.tile:hover { border-color: var(--border-strong); }
 .mini-cell:hover { background: var(--surface-3); }
 .mini-cell.out { visibility: hidden; }
 .mini-cell.today { box-shadow: inset 0 0 0 2px var(--accent); color: var(--accent-text); }
-.mini-cell.t-meu { background: var(--accent); color: #fff; }
+.mini-cell.t-meu { background: var(--duty); color: #fff; }
 .mini-cell.t-outro { background: var(--swap-bg); color: var(--swap-fg); }
 .mini-cell.t-pago { background: var(--paid-bg); color: #fff; }
 .mini-cell.t-areceber { background: var(--due-bg); color: #fff; }
@@ -1077,7 +1082,7 @@ a.tile:hover { border-color: var(--border-strong); }
 .date-block span { font-size: 11px; color: var(--text-3); font-weight: 600; text-transform: uppercase; }
 .date-block.today { background: var(--accent); color: var(--on-accent); }
 .date-block.today span { color: rgba(255, 255, 255, .85); }
-.shift-row.t-meu .date-block:not(.today) { box-shadow: inset 3px 0 0 var(--accent); }
+.shift-row.t-meu .date-block:not(.today) { box-shadow: inset 3px 0 0 var(--duty); }
 .shift-row.t-pago .date-block:not(.today) { box-shadow: inset 3px 0 0 var(--paid-bg); }
 .shift-row.t-areceber .date-block:not(.today) { box-shadow: inset 3px 0 0 var(--due-bg); }
 .shift-row.t-outro .date-block:not(.today) { box-shadow: inset 3px 0 0 var(--swap-bg); }
@@ -1528,7 +1533,7 @@ body.auth-screen .auth-local { color: var(--text-3); }
 .duty-banner strong { display: block; font-size: 16px; letter-spacing: .01em; }
 .duty-banner small { display: block; font-size: 13px; opacity: .92; margin-top: 2px; }
 .duty-banner .db-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: rgba(255, 255, 255, .18); flex-shrink: 0; }
-.duty-banner.t-meu { background: var(--accent); color: #fff; }
+.duty-banner.t-meu { background: var(--duty); color: #fff; }
 .duty-banner.t-outro { background: var(--swap-bg); color: var(--swap-fg); }
 .duty-banner.t-pago { background: var(--paid-bg); color: #fff; }
 .duty-banner.t-areceber { background: var(--due-bg); color: #fff; }
@@ -1617,3 +1622,26 @@ body.auth-screen .auth-local { color: var(--text-3); }
 .budget-cat { display: flex; flex-direction: column; min-width: 0; }
 .budget-line input { text-align: right; }
 .chart-note { margin: -4px 0 8px; }
+
+/* Cor do app por conta (Ajustes → Perfil e aparência). Vermelho do brasão é o padrão. */
+:root[data-accent="rosa"] { --accent: #be185d; --accent-hover: #9d174d; --accent-soft: #fce7f3; --accent-text: #be185d; }
+:root[data-accent="vinho"] { --accent: #8b1e3f; --accent-hover: #6f1832; --accent-soft: #f7e8ed; --accent-text: #8b1e3f; }
+:root[data-accent="grafite"] { --accent: #3f3c3a; --accent-hover: #2b2928; --accent-soft: #eeedec; --accent-text: #3f3c3a; }
+:root[data-accent="laranja"] { --accent: #c2410c; --accent-hover: #9a3412; --accent-soft: #ffedd5; --accent-text: #c2410c; }
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="rosa"]:not([data-theme="light"]) { --accent: #db2777; --accent-hover: #ec4899; --accent-soft: #3b1527; --accent-text: #f9a8d4; }
+  :root[data-accent="vinho"]:not([data-theme="light"]) { --accent: #b8325a; --accent-hover: #cc4670; --accent-soft: #36161f; --accent-text: #f0a3b9; }
+  :root[data-accent="grafite"]:not([data-theme="light"]) { --accent: #57534e; --accent-hover: #78716c; --accent-soft: #2b2a29; --accent-text: #e7e5e4; }
+  :root[data-accent="laranja"]:not([data-theme="light"]) { --accent: #ea580c; --accent-hover: #f97316; --accent-soft: #3a1d0e; --accent-text: #fdba74; }
+}
+:root[data-theme="dark"][data-accent="rosa"] { --accent: #db2777; --accent-hover: #ec4899; --accent-soft: #3b1527; --accent-text: #f9a8d4; }
+:root[data-theme="dark"][data-accent="vinho"] { --accent: #b8325a; --accent-hover: #cc4670; --accent-soft: #36161f; --accent-text: #f0a3b9; }
+:root[data-theme="dark"][data-accent="grafite"] { --accent: #57534e; --accent-hover: #78716c; --accent-soft: #2b2a29; --accent-text: #e7e5e4; }
+:root[data-theme="dark"][data-accent="laranja"] { --accent: #ea580c; --accent-hover: #f97316; --accent-soft: #3a1d0e; --accent-text: #fdba74; }
+.accent-pick { display: flex; flex-wrap: wrap; gap: 8px; }
+.accent-pick label { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px 6px 6px; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; font-size: 13.5px; font-weight: 600; }
+.accent-pick input { position: absolute; opacity: 0; pointer-events: none; }
+.accent-pick .sw { width: 20px; height: 20px; border-radius: 50%; background: var(--sw); }
+.accent-pick input:checked + .sw { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--sw); }
+.accent-pick label:has(input:checked) { border-color: var(--text-2); }
+.accent-pick input:focus-visible + .sw { outline: 2px solid var(--accent); outline-offset: 3px; }

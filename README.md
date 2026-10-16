@@ -50,7 +50,9 @@ Os dados ficam no **Firebase Realtime Database** do projeto `projetodemop`, sepa
 - **Login:** e-mail e senha (com “esqueci minha senha”) ou conta Google.
 - **Sem internet:** o app abre e funciona com a cópia salva no aparelho; as alterações ficam numa fila e são enviadas quando a conexão volta.
 - **Segurança:** as regras em `database.rules.json` só deixam cada conta ler e gravar os próprios dados.
-- **Acesso restrito:** só a conta `thiago.eear108@gmail.com` (com e-mail confirmado) entra no app e acessa o banco. Qualquer outra conta é desconectada na hora, e as regras do banco recusam leitura e escrita. Para liberar outra pessoa, inclua o e-mail em `ALLOWED_EMAILS` (`js/cloud/config.js`) **e** em `database.rules.json`, e publique as regras de novo.
+- **Acesso restrito:** só as contas `thiago.eear108@gmail.com` e `lucilafidelislb@gmail.com` (com e-mail confirmado; a conta Google já vem confirmada) entram no app e acessam o banco. Qualquer outra conta é desconectada na hora, e as regras do banco recusam leitura e escrita. Para liberar ou tirar alguém, altere o e-mail em `ALLOWED_EMAILS` (`js/cloud/config.js`) **e** em `database.rules.json`, e publique as regras de novo.
+- **Áreas separadas:** cada conta tem a sua própria área, com todas as funções (tarefas, agenda, escala, trocas, finanças, ajustes). Uma conta não lê nem grava nada da outra (as regras recusam), e o topo mostra de quem é a área aberta (“Área de Thiago”, “Área de Lucila”). Cada conta pode escolher a cor do app em **Ajustes → Perfil e aparência**; a cor de “Meu serviço” na escala continua sempre o vermelho do brasão.
+- **Aparelho compartilhado:** para trocar de conta, use **Ajustes → Sair da conta**. Se outra conta entrar num aparelho que guardava a cópia de alguém (ex.: a sessão expirou sem sair), a cópia antiga é apagada do aparelho antes de a nova área abrir; os dados de quem saiu continuam na nuvem.
 
 ### Configuração no console do Firebase (uma vez)
 

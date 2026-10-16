@@ -26,7 +26,7 @@ export function renderLogin(el, { message = '', kind = 'error', onLocal } = {}) 
         </form>
         <div class="auth-or"><span>ou</span></div>
         <button type="button" class="btn auth-google" data-google>${GOOGLE}Continuar com Google</button>
-        <p class="auth-foot muted small">${icon('shield', 14)} Acesso restrito ao titular.</p>
+        <p class="auth-foot muted small">${icon('shield', 14)} Acesso restrito às contas autorizadas. Cada conta tem a sua própria área.</p>
       </div>
       ${isDevHost() ? '<button type="button" class="link-btn auth-local" data-local>Usar sem conta (desenvolvimento)</button>' : ''}
     </div>`;
