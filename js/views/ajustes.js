@@ -83,6 +83,9 @@ function download(filename, text) {
   }, 500);
 }
 
+/** Cores do app por conta: [valor, nome, amostra]. Sem azul. */
+const ACCENTS = [['vermelho', 'Vermelho', '#a60807'], ['rosa', 'Rosa', '#be185d'], ['vinho', 'Vinho', '#8b1e3f'], ['laranja', 'Laranja', '#c2410c'], ['grafite', 'Grafite', '#3f3c3a']];
+
 export default {
   id: 'ajustes',
   title: 'Ajustes',
@@ -111,6 +114,7 @@ export default {
         <span class="avatar">${esc((ci.user.name || ci.user.email || '?').slice(0, 2).toUpperCase())}</span>
         <div class="row-main"><strong>${esc(ci.user.name || 'Minha conta')}</strong><span class="muted small">${esc(ci.user.email || '')}</span></div>
       </div>
+      <p class="notice">${icon('shield', 16)}<span>Esta é a <strong>sua área</strong>: tudo o que você organiza aqui é só seu. Quem entra com outra conta tem a própria área e não vê nada desta.</span></p>
       <p><span class="pill ${syncPill[0]}">${icon(syncPill[1], 13)}${esc(syncPill[2])}</span></p>
       ${ci.error ? `<p class="notice notice-serious">${icon('alert', 16)}<span>${esc(ci.error)}</span></p>` : ''}
       <p class="muted small">Seus dados ficam salvos na nuvem (Firebase) e aparecem em qualquer aparelho em que você entrar com esta conta. Sem internet, o app continua funcionando e envia as alterações quando a conexão voltar.</p>
@@ -129,6 +133,10 @@ export default {
           <div class="grid-2">
             ${field('Tema', `<select data-setting="settings.theme">${[['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Escuro']].map(([v, l]) => `<option value="${esc(v)}" ${s.theme === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
             ${field('A semana começa no', `<select data-setting="settings.weekStart" data-num>${[[0, 'Domingo'], [1, 'Segunda']].map(([v, l]) => `<option value="${esc(v)}" ${Number(s.weekStart) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
+          </div>
+          <div class="field"><span class="field-label">Cor do app (só na sua área)</span>
+            <div class="accent-pick" role="radiogroup" aria-label="Cor do app">${ACCENTS.map(([v, l, c]) => `
+              <label><input type="radio" name="accent" value="${v}" data-setting="settings.accent" ${(s.accent || 'vermelho') === v ? 'checked' : ''}><span class="sw" style="--sw:${c}"></span>${l}</label>`).join('')}</div>
           </div>`)}
 
         ${section('lembretes', 'bell', 'Lembretes e notificações', `
@@ -209,7 +217,7 @@ export default {
 
         ${section('instalar', 'install', 'Instalar no celular', install, 'Instalado, o app abre em tela cheia, funciona sem internet e fica no seu celular como qualquer aplicativo.')}
 
-        <p class="muted small center">Rotina Geral · versão 1.2 · ${ci.user ? 'sincronizado com o Firebase' : 'dados neste aparelho'}</p>
+        <p class="muted small center">Rotina Geral · versão 1.3 · ${ci.user ? 'sincronizado com o Firebase' : 'dados neste aparelho'}</p>
       </div>`;
   },
   mount(el) {

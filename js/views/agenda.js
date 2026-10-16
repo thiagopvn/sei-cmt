@@ -91,6 +91,7 @@ export default {
   render({ state, today }) {
     month = month || monthOf(today);
     selected = selected || today;
+    if (ui.area && !state.areas.some((a) => a.id === ui.area)) ui.area = '';
     const opts = { layers: ui.layers, area: ui.area || null };
     let body;
     if (ui.mode === 'lista') {

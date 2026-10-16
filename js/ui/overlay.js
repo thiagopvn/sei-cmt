@@ -4,6 +4,7 @@ import { esc } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 
 const stack = [];
+const SHEET_COLOR = { duty: 'var(--duty)', accent: 'var(--accent)', swap: 'var(--swap-bg)' };
 
 function root() {
   return document.getElementById('overlay-root');
@@ -108,7 +109,7 @@ export function actionSheet({ title, options }) {
       size: 'sm',
       body: `<div class="sheet-list">${options.map((o, i) => `
         <button type="button" class="sheet-item ${o.danger ? 'danger' : ''}" data-i="${i}">
-          ${o.icon ? `<span class="sheet-ic" ${o.color ? `style="--c: ${o.color === 'accent' ? 'var(--accent)' : o.color === 'swap' ? 'var(--swap-bg)' : `var(--c${Number(o.color) || 0})`}"` : ''}>${icon(o.icon)}</span>` : ''}
+          ${o.icon ? `<span class="sheet-ic" ${o.color ? `style="--c: ${SHEET_COLOR[o.color] || `var(--c${Number(o.color) || 0})`}"` : ''}>${icon(o.icon)}</span>` : ''}
           <span class="sheet-text"><strong>${esc(o.label)}</strong>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</span>
         </button>`).join('')}</div>`,
       onClose: () => { if (!answered) resolve(null); },
@@ -121,6 +122,11 @@ export function actionSheet({ title, options }) {
       },
     });
   });
+}
+
+/** Some com os avisos na tela (ex.: ao sair da conta, para nada da conta anterior ficar à vista). */
+export function clearToasts() {
+  document.getElementById('toast-root')?.replaceChildren();
 }
 
 export function toast(message, { action, timeout = 4500, kind = '' } = {}) {

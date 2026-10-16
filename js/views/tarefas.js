@@ -225,6 +225,10 @@ export default {
     if (filter) ui.mode = 'lista';
   },
   render({ state, today }) {
+    // Filtro guardado no aparelho que não existe nesta conta (área apagada, ou outra pessoa
+    // usou o app neste aparelho): solta, senão a lista apareceria vazia sem motivo visível.
+    if (ui.area && !state.areas.some((a) => a.id === ui.area)) ui.area = '';
+    if (ui.type && !state.tasks.some((t) => t.type === ui.type)) ui.type = '';
     const counts = Object.fromEntries(state.areas.map((a) => [a.id, state.tasks.filter((t) => t.area === a.id && !t.recurrence && t.status !== 'done').length]));
     const areaItems = state.areas.map((a) => [a.id, `${a.name}${counts[a.id] ? ` · ${counts[a.id]}` : ''}`, a.color]);
     const area = state.areas.find((a) => a.id === ui.area);

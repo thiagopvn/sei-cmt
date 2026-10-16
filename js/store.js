@@ -4,6 +4,9 @@ import { todayKey } from './lib/dates.js';
 
 const KEY = 'pauta:v1';
 
+/** Cores do app (cada conta escolhe a sua em Ajustes). */
+export const ACCENTS = ['vermelho', 'rosa', 'vinho', 'laranja', 'grafite'];
+
 export const AREA_SLOTS = 8; // cores categóricas disponíveis (--c1 … --c8)
 
 /** "Nenhum aviso": o Firebase apaga listas vazias, então usamos um marcador. */
@@ -45,6 +48,7 @@ export function defaultState() {
     timer: null,
     settings: {
       theme: 'auto',
+      accent: 'vermelho',
       weekStart: 0,
       alertHour: '08:00',
       alertDays: [3, 1, 0],
@@ -153,6 +157,7 @@ function migrate(raw) {
   }));
   s.settings.budgets = arr(s.settings.budgets).filter((b) => b && typeof b.c === 'string' && Number(b.v) > 0)
     .map((b) => ({ c: b.c.slice(0, 60), v: Math.round(Number(b.v) * 100) / 100 }));
+  if (!ACCENTS.includes(s.settings.accent)) s.settings.accent = base.settings.accent;
   s.settings.importRules = arr(s.settings.importRules).filter((r) => r && typeof r.m === 'string' && typeof r.c === 'string')
     .map((r) => ({ m: r.m.slice(0, 120), c: r.c.slice(0, 60) }));
   s.timeLog = s.timeLog.map((l) => ({ ...l, id: safeId(l.id), taskId: optId(l.taskId), area: optId(l.area), date: date(l.date) })).filter((l) => l.date);

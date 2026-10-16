@@ -18,22 +18,24 @@
   <script>
     // Aplica o tema salvo antes de desenhar, para não piscar.
     try {
-      var t = JSON.parse(localStorage.getItem('pauta:v1') || '{}').settings?.theme;
+      var st = JSON.parse(localStorage.getItem('pauta:v1') || '{}').settings || {};
+      var t = st.theme;
       if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      if (st.accent && st.accent !== 'vermelho') document.documentElement.dataset.accent = st.accent;
     } catch (e) {}
   </script>
 </head>
 <body>
   <div class="app">
     <aside class="sidebar" aria-label="Menu">
-      <a class="brand" href="#/inicio"><img class="brand-logo" src="assets/logo-128.png" alt="" width="36" height="36"><span>Rotina Geral</span></a>
+      <a class="brand" href="#/inicio"><img class="brand-logo" src="assets/logo-128.png" alt="" width="36" height="36"><span class="brand-txt">Rotina Geral<small class="brand-who" data-who hidden></small></span></a>
       <button type="button" class="btn btn-primary side-new" data-action="new-menu"><span data-icon="plus" data-size="18"></span>Adicionar</button>
       <nav class="side-nav" id="side-nav"></nav>
       <a href="#/ajustes" data-sync hidden></a>
     </aside>
     <div class="main">
       <header class="topbar">
-        <a class="brand" href="#/inicio"><img class="brand-logo" src="assets/logo-128.png" alt="" width="36" height="36"><span>Rotina Geral</span></a>
+        <a class="brand" href="#/inicio"><img class="brand-logo" src="assets/logo-128.png" alt="" width="36" height="36"><span class="brand-txt">Rotina Geral<small class="brand-who" data-who hidden></small></span></a>
         <div class="topbar-right">
           <a href="#/ajustes" data-sync hidden></a>
           <a class="icon-btn" href="#/ajustes" aria-label="Ajustes" data-icon="settings" data-size="22"></a>
