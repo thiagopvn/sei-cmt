@@ -1,13 +1,13 @@
-// Exportar PDF: uma página A4 deitada com o mês inteiro — calendário com serviços, prazos,
-// compromissos e contas; ao lado, a lista dos serviços (quem tira, horário, troca, observação),
-// os prazos e compromissos e as contas; no rodapé, a legenda.
+// Exportar PDF: uma página A4 deitada com o mês inteiro — calendário com serviços, prazos e
+// compromissos; ao lado, a lista dos serviços (quem tira, horário, troca, observação) e os
+// prazos e compromissos; no rodapé, a legenda. Finanças ficam de fora (o PDF é da agenda).
 //
 // A página é montada pelo próprio app e enviada à impressão do navegador, onde se escolhe
 // "Salvar como PDF". Sem biblioteca externa: funciona offline e o texto sai vetorial (nítido).
 
 import { store } from './store.js';
 import { cloud } from './cloud/cloud.js';
-import { esc, money } from './lib/util.js';
+import { esc } from './lib/util.js';
 import { icon } from './lib/icons.js';
 import {
   todayKey, monthOf, monthStart, monthEnd, startOfWeek, addDays, diffDays, fromKey, monthLabel, fmtDM, WEEKDAYS_SHORT,
@@ -106,29 +106,21 @@ function sideHtml(state, M, today, map, layers) {
         `${hhLabel(sh.start)} · ${sh.hours}h${isPartial(sh) ? ` (${timeSpan(sh)})` : ''}`,
         sh.unit || null,
         sh.kind === 'cobrindo' && sh.swap?.myDate ? `troca do meu dia ${fmtDM(sh.swap.myDate)}` : null,
-        sh.paid ? `${money(sh.value)} ${sh.service?.receivedAt ? 'recebido' : 'a receber'}` : null,
       ].filter(Boolean).join(' · ');
       return `<li class="${sh.active ? '' : 'dim'}">${dayCell(sh.date)}<span class="p-t"><strong>${esc(what)}</strong> <span class="p-tag t-${shiftTone(sh)}">${sh.active ? 'eu tiro' : 'não tiro'}</span><span class="p-sub">${esc(when)}</span>${note ? `<i>${icon('note', 9)}${esc(note)}</i>` : ''}</span></li>`;
     }), true));
   }
 
   const agenda = [];
-  const bills = [];
   for (const [d, items] of map) {
     if (monthOf(d) !== M) continue;
-    for (const it of items) {
-      if (it.layer === 'tarefa' || it.layer === 'evento' || it.layer === 'rotina') agenda.push([d, it]);
-      else if (it.layer === 'financa') bills.push([d, it]);
-    }
+    for (const it of items) if (it.layer === 'tarefa' || it.layer === 'evento' || it.layer === 'rotina') agenda.push([d, it]);
   }
   if (agenda.length) {
     sections.push(list('Prazos e compromissos', 'calendar', agenda.map(([d, it]) => {
       const a = areaOf(state, it.area);
       return `<li class="${it.done ? 'done' : ''}">${dayCell(d)}<span class="p-t"><span class="p-dot" style="--c: ${colorVar(agendaItemColor(state, it))}"></span><strong>${esc(it.title)}</strong><span class="p-sub">${it.time ? `${esc(it.time)} · ` : ''}${esc(it.sub)}${a ? ` · ${esc(a.name)}` : ''}</span></span></li>`;
     }), !sections.length));
-  }
-  if (bills.length) {
-    sections.push(list('Contas e recebimentos', 'wallet', bills.map(([d, it]) => `<li class="${it.done ? 'done' : ''}">${dayCell(d)}<span class="p-t"><strong>${esc(it.title)}</strong><span class="p-sub">${esc(it.sub)}${it.done ? ' · pago' : ''}</span></span></li>`)));
   }
   return sections.join('') || '<section class="grow"><h2>Mês livre</h2><p class="p-sub">Nada marcado para este mês.</p></section>';
 }
@@ -149,7 +141,7 @@ function statsHtml(state, M, today, map) {
     ${tile(st.count, st.count === 1 ? 'serviço' : 'serviços')}
     ${tile(`${st.hours}h`, 'de serviço')}
     ${st.covered + st.covering ? tile(st.covered + st.covering, st.covered + st.covering === 1 ? 'troca' : 'trocas') : ''}
-    ${st.paidTotal ? tile(money(st.paidTotal), st.pending ? `extras · ${money(st.pending)} a receber` : 'extras · tudo recebido') : ''}
+    ${st.paidCount ? tile(st.paidCount, st.paidCount === 1 ? 'extra' : 'extras') : ''}
     ${tasks ? tile(tasks, tasks === 1 ? 'prazo' : 'prazos') : ''}
     ${events ? tile(events, events === 1 ? 'compromisso' : 'compromissos') : ''}
   </div>`;
@@ -169,9 +161,11 @@ export function buildAgendaPage(state, M, today, { layers = null, area = null } 
   const first = startOfWeek(monthStart(M), ws);
   const rows = Math.ceil((diffDays(first, monthEnd(M)) + 1) / 7);
   const last = addDays(first, rows * 7 - 1);
-  const map = collectRange(state, first, last, { layers, area });
+  // Finanças não entram no PDF (nem nas células nem na coluna): é a agenda do mês.
+  const used = (layers || Object.keys(LAYERS)).filter((l) => l !== 'financa');
+  const map = collectRange(state, first, last, { layers: used, area });
   const cells = [...map.entries()].map(([d, items]) => cellHtml(state, d, items, today, M)).join('');
-  const shown = (layers || Object.keys(LAYERS)).map((l) => LAYERS[l]).join(', ');
+  const shown = used.map((l) => LAYERS[l]).join(', ');
   const areaName = area ? areaOf(state, area)?.name : null;
   const now = new Date();
   const who = whoLabel(state);
@@ -187,7 +181,7 @@ export function buildAgendaPage(state, M, today, { layers = null, area = null } 
         <div class="p-dow">${Array.from({ length: 7 }, (_, i) => `<span>${DOW[(ws + i) % 7]}</span>`).join('')}</div>
         <div class="p-grid" style="grid-template-rows: repeat(${rows}, 1fr)">${cells}</div>
       </div>
-      <aside class="p-side">${sideHtml(state, M, today, map, layers)}</aside>
+      <aside class="p-side">${sideHtml(state, M, today, map, used)}</aside>
     </div>
     <footer class="p-foot">
       ${legendHtml()}
