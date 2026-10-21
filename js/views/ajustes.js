@@ -217,7 +217,7 @@ export default {
 
         ${section('instalar', 'install', 'Instalar no celular', install, 'Instalado, o app abre em tela cheia, funciona sem internet e fica no seu celular como qualquer aplicativo.')}
 
-        <p class="muted small center">Rotina Geral · versão 1.4 · ${ci.user ? 'sincronizado com o Firebase' : 'dados neste aparelho'}</p>
+        <p class="muted small center">Rotina Geral · versão 1.5 · ${ci.user ? 'sincronizado com o Firebase' : 'dados neste aparelho'}</p>
       </div>`;
   },
   mount(el) {

@@ -5,6 +5,7 @@ import { icon } from '../lib/icons.js';
 import { addMonths, monthOf, monthStart, monthEnd, startOfWeek, addDays, fromKey, fmtShort, fmtDM, relDays, WEEKDAYS_SHORT, WEEKDAYS_MIN, hoursLabel, monthShortLabel, todayKey } from '../lib/dates.js';
 import { shiftsInRange, shiftTitle, permutaLabel, permutaDoMeuDia, shortName, ownerLabel, ownersOf, ownersShort, payerLabel, monthStats, swapStatus, swapBalance, SWAP_LABEL, pendingPayments, payStatus, PAY_LABEL, shiftNote } from '../domain/shifts.js';
 import { openShift } from '../actions.js';
+import { exportAgendaPdf } from '../print.js';
 import { shiftTone, shiftLegend, byDuty, dutyTag, rendBadge, rendPill, isPartial, durationClass, timeSpan, noteLine } from '../ui/shiftui.js';
 import { tile, monthNav, tabs, emptyState } from '../ui/parts.js';
 import { columns, bindCharts } from '../ui/charts.js';
@@ -195,6 +196,7 @@ export default {
       <header class="page-head">
         <h1>Escala</h1>
         <div class="head-actions">
+          <button type="button" class="btn btn-sm" data-action="es-pdf" title="Exportar a escala do mês em PDF (uma página)">${icon('download', 16)}PDF</button>
           <button type="button" class="btn btn-sm" data-action="generate-schedule">${icon('sparkles', 16)}Gerar escala</button>
           <button type="button" class="btn btn-primary btn-sm" data-action="service-new">${icon('plus', 16)}Serviço</button>
         </div>
@@ -213,6 +215,9 @@ export default {
     bindCharts(el);
   },
   actions: {
+    'es-pdf'() {
+      exportAgendaPdf({ month, layers: ['servico'] });
+    },
     'es-tab'(btn) {
       tab = btn.dataset.value;
       history.replaceState(null, '', '#/escala');
