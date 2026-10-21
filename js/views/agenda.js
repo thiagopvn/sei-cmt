@@ -7,6 +7,7 @@ import { collectRange, conflicts, LAYERS } from '../domain/agenda.js';
 import { shiftPill, shiftLegend, byDuty } from '../ui/shiftui.js';
 import { agendaItemRow, monthNav, tabs, emptyState, dot, colorVar, LAYER_COLOR, agendaItemColor } from '../ui/parts.js';
 import { rerender } from '../ui/bus.js';
+import { exportAgendaPdf } from '../print.js';
 
 const PREF = 'pauta:agenda';
 // Rotinas começam ocultas na agenda para não poluir (elas aparecem em Início e Tarefas).
@@ -137,6 +138,7 @@ export default {
       <div class="toolbar">
         ${monthNav(month, 'ag-month')}
         <button type="button" class="btn btn-sm" data-action="ag-today">Hoje</button>
+        <button type="button" class="btn btn-sm" data-action="ag-pdf" title="Exportar o mês em PDF (uma página)">${icon('download', 16)}PDF</button>
       </div>
       ${filters(state)}
       ${body}`;
@@ -149,6 +151,9 @@ export default {
     });
   },
   actions: {
+    'ag-pdf'() {
+      exportAgendaPdf({ month, layers: ui.layers, area: ui.area || null });
+    },
     'ag-mode'(btn) {
       ui.mode = btn.dataset.value;
       savePrefs();

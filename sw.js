@@ -1,5 +1,5 @@
 // Service worker: guarda o app para funcionar sem internet e mostra notificações.
-const VERSION = 'rotina-geral-v8';
+const VERSION = 'rotina-geral-v9';
 const FIREBASE = 'https://www.gstatic.com/firebasejs/12.12.0';
 const SDK = ['firebase-app.js', 'firebase-auth.js', 'firebase-database.js'].map((f) => `${FIREBASE}/${f}`);
 const ASSETS = [
@@ -47,6 +47,7 @@ const ASSETS = [
   'js/forms/finance.js',
   'js/forms/shift.js',
   'js/forms/item.js',
+  'js/print.js',
   'js/forms/import.js',
   'js/views/inicio.js',
   'js/views/agenda.js',

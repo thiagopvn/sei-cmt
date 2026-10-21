@@ -39,6 +39,7 @@ Aplicativo (PWA) para organizar a vida pessoal e profissional em um só lugar: *
 - Mês com camadas (serviços, prazos, compromissos, rotinas, finanças) e filtro por área; painel do dia; lista dos próximos 45 dias (tarefas sem prazo aparecem ao final, em “Sem data”).
 - Tudo o que é criado em Tarefas entra na agenda como **card** na cor da área (no computador, como etiquetas dentro do mês). Tocar num prazo ou compromisso abre um **card de detalhes**: quando, onde, repetição, lembrete, etapas (marcáveis ali mesmo), observação, aviso de conflito com o serviço e as ações (concluir, editar).
 - Compromissos de um dia, de vários dias (férias/afastamento) ou repetidos; lembretes.
+- **Exportar PDF** (botão “PDF” na Agenda e na Escala): uma página A4 deitada com o mês — calendário com serviços (quem tira, horas, rendição, observação), prazos, compromissos e contas; ao lado, as listas do mês; no rodapé, a legenda. O que não cabe vira “+n”, nunca texto cortado. A página é montada pelo app e enviada à impressão do navegador, onde se escolhe “Salvar como PDF” (funciona offline, sem biblioteca externa).
 
 **Ajustes**
 - Lembretes (horário, antecedência de prazos, contas e serviços), notificações do celular, tema claro/escuro.
