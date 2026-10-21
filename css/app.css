@@ -896,6 +896,26 @@ a.tile:hover { border-color: var(--border-strong); }
 
 .agenda-grid { display: grid; gap: 16px; }
 @media (min-width: 900px) { .agenda-grid { grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); align-items: start; } .day-panel { position: sticky; top: 16px; } }
+/* Faixa da semana no painel do dia (só no celular, onde o painel fica abaixo do mês) */
+.week-strip { display: none; }
+@media (max-width: 899px) {
+  .day-panel { scroll-margin-top: calc(52px + var(--safe-t) + 8px); }
+  .week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: 0 0 10px; }
+  .ws-day { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 0 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text-2); font: inherit; min-width: 0; }
+  .ws-day small { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-3); line-height: 1.1; }
+  .ws-day b { font-size: 15px; line-height: 1.15; color: var(--text); }
+  .ws-day.today b { color: var(--accent-text); }
+  .ws-day.active { background: var(--accent); border-color: var(--accent); }
+  .ws-day.active b, .ws-day.active small { color: #fff; }
+  .ws-day.t-meu:not(.active) { box-shadow: inset 0 -3px 0 var(--duty); }
+  .ws-day.t-outro:not(.active) { box-shadow: inset 0 -3px 0 var(--swap-bg); }
+  .ws-day.t-pago:not(.active) { box-shadow: inset 0 -3px 0 var(--paid-bg); }
+  .ws-day.t-areceber:not(.active) { box-shadow: inset 0 -3px 0 var(--due-bg); }
+  .ws-day.t-perm:not(.active) { border-style: dashed; border-color: var(--perm-line); }
+  .ws-dots { display: flex; gap: 2px; min-height: 5px; }
+  .ws-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--c); }
+  .ws-day.active .ws-dots i { background: rgba(255, 255, 255, .85); }
+}
 
 .calendar { padding: 10px; }
 .cal-head, .cal-body { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
@@ -908,7 +928,7 @@ a.tile:hover { border-color: var(--border-strong); }
   align-items: center;
   gap: 3px;
   min-height: 62px;
-  padding: 6px 2px;
+  padding: 6px 1px;
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
@@ -980,13 +1000,26 @@ a.tile:hover { border-color: var(--border-strong); }
 .cal-shift .cal-ref { white-space: nowrap; }
 @media (max-width: 1099px) { .cal-shift { padding: 1px 3px; } }
 .cal-shift .ic { display: inline-block; vertical-align: -1px; width: 10px; height: 10px; margin: 0 1px; }
-.cal-dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 8px; }
+.cal-dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 0; }
 .cal-more { font-size: 10px; line-height: 8px; color: var(--text-3); font-weight: 700; }
-.cal-items { display: none; }
+/* Celular: os dois primeiros prazos/compromissos do dia em texto (na cor da área); o resto vira bolinha */
+.cal-items { display: flex; flex-direction: column; gap: 2px; align-self: stretch; min-width: 0; }
+.cal-item { font-size: 8.5px; line-height: 1.2; font-weight: 600; color: var(--text); text-align: left; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: break-word; hyphens: auto; padding: 1px 2px; border-radius: 3px; background: color-mix(in srgb, var(--c, var(--text-3)) 14%, transparent); border-left: 2px solid var(--c, var(--text-3)); }
+.cal-item b { display: none; }
+.cal-item.is-done { text-decoration: line-through; color: var(--text-3); opacity: .75; }
+@media (max-width: 1099px) { .cal-item.d-only { display: none; } }
+.cal-shift[data-item], .cal-item[data-item] { cursor: pointer; }
 .cal-shift .lbl-long { display: none; }
 .cal-ref { display: flex; align-items: center; justify-content: center; gap: 2px; font-size: 9.5px; font-weight: 600; opacity: .85; margin-top: 1px; }
 .cal-ref .ic { width: 10px; height: 10px; }
+/* Legenda: no celular fica recolhida ("Legenda"), para o painel do dia ficar mais perto do mês */
+.cal-legend-box > summary { list-style: none; cursor: pointer; font-size: 12px; font-weight: 700; color: var(--text-3); padding: 10px 4px 2px; display: flex; align-items: center; gap: 6px; }
+.cal-legend-box > summary::-webkit-details-marker { display: none; }
+.cal-legend-box > summary .ic { transition: transform .15s; }
+.cal-legend-box[open] > summary .ic { transform: rotate(180deg); }
+@media (min-width: 900px) { .cal-legend-box > summary { display: none; } }
 .cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 4px 2px; font-size: 12px; color: var(--text-3); }
+.cal-legend-box .cal-legend { padding-top: 4px; }
 .cal-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .legend-sw { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
 .legend-sw.t-meu { background: var(--duty); }
@@ -1009,10 +1042,9 @@ a.tile:hover { border-color: var(--border-strong); }
   .cal-cell { min-height: 96px; align-items: stretch; text-align: left; padding: 6px; }
   .cal-num { width: 26px; height: 26px; font-size: 13px; }
   .cal-dots { display: none; }
-  .cal-items { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   /* Prazos, compromissos e rotinas como etiquetas na cor da área (como num calendário de verdade) */
-  .cal-item { font-size: 11px; font-weight: 550; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 5px 1px 6px; border-radius: 4px; background: color-mix(in srgb, var(--c, var(--text-3)) 14%, transparent); border-left: 3px solid var(--c, var(--text-3)); }
-  .cal-item b { font-weight: 750; color: var(--text-2); }
+  .cal-item { font-size: 11px; font-weight: 550; padding: 1px 5px 1px 6px; border-radius: 4px; border-left-width: 3px; display: block; white-space: nowrap; text-overflow: ellipsis; -webkit-line-clamp: none; }
+  .cal-item b { display: inline; font-weight: 750; color: var(--text-2); }
   .cal-item.is-done { text-decoration: line-through; color: var(--text-3); opacity: .75; }
   .cal-item-more { background: none; border-left: 0; color: var(--text-3); font-weight: 700; padding-left: 2px; }
   .cal-shift { align-self: flex-start; }
