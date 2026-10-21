@@ -2,7 +2,7 @@
 // por dia, e detecta conflitos com os dias de serviço.
 
 import { addDays, addMonths, monthOf, toMin, eachDay } from '../lib/dates.js';
-import { shiftsInRange, shiftTitle, permutaDoMeuDia, ownerLabel } from './shifts.js';
+import { shiftsInRange, shiftTitle, permutaDoMeuDia, ownerLabel, shiftEnd } from './shifts.js';
 import { instancesInRange } from './tasks.js';
 import { eventInstances, eventTimeLabel, EVENT_TYPES } from './events.js';
 import { ledger } from './finance.js';
@@ -32,7 +32,8 @@ export function collectRange(state, from, to, { layers = null, area = null } = {
         title: shiftTitle(sh),
         sub: [
           sh.kind === 'servico' ? ownerLabel(sh) : null,
-          `${sh.start} · ${sh.hours}h`,
+          // Menos de 24h: mostra a saída ("18:00–08:00 · 14h"); nos de 24h a saída é o mesmo horário.
+          Number(sh.hours) < 24 ? `${sh.start}–${shiftEnd(sh).time} · ${sh.hours}h` : `${sh.start} · ${sh.hours}h`,
           sh.unit || null,
           sh.kind === 'cobrindo' ? permutaDoMeuDia(sh) : null,
           sh.kind === 'coberto' ? `${sh.colleague} tira por mim` : null,

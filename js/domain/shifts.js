@@ -323,6 +323,26 @@ export function shiftTitle(sh) {
   return owners.length ? `${label} de ${ownersText(owners)}` : label;
 }
 
+/**
+ * Observações do turno, sem repetições: [{ src: 'servico' | 'troca', text }].
+ * Serviço meu → anotação do serviço; troca (eu tiro o dele) → anotação da troca;
+ * permutado → anotação do serviço e da troca (e da troca original, se foi repassado).
+ */
+export function shiftNotes(sh) {
+  const out = [];
+  const add = (src, text) => {
+    const t = String(text || '').trim();
+    if (t && !out.some((n) => n.text === t)) out.push({ src, text: t });
+  };
+  if (sh?.service) add('servico', sh.service.notes);
+  if (sh?.origin) add('troca', sh.origin.notes);
+  if (sh?.swap) add('troca', sh.swap.notes);
+  return out;
+}
+
+/** Observações numa linha só ("obs 1 · obs 2"), ou '' se não há nada anotado. */
+export const shiftNote = (sh) => shiftNotes(sh).map((n) => n.text).join(' · ');
+
 /** Turno ativo cobrindo o momento atual (considera turnos que começaram ontem). */
 export function onDutyNow(state, today, now = new Date()) {
   const m = nowMin(now);

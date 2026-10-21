@@ -5,7 +5,7 @@ import { addDays, fmtDM, fromKey, toMin, relDays, todayKey } from './lib/dates.j
 import { money } from './lib/util.js';
 import { activeInstance } from './domain/tasks.js';
 import { eventInstances } from './domain/events.js';
-import { shiftsInRange, ownersOf, ownersText, rendicao } from './domain/shifts.js';
+import { shiftsInRange, ownersOf, ownersText, rendicao, shiftNote } from './domain/shifts.js';
 import { openItems, remaining } from './domain/finance.js';
 import { toast } from './ui/overlay.js';
 
@@ -97,7 +97,8 @@ export function buildAlarms(state, now = new Date()) {
     const label = sh.owner ? `Serviço de ${ownersText(ownersOf(sh))} (você tira)` : 'Você está de serviço (meu serviço)';
     // Rendição fora do padrão (ex.: 18h) vem destacada para não chegar no horário errado.
     const rend = rendicao(sh, s) ? `rendição às ${sh.start} (fora do padrão)` : `às ${sh.start}`;
-    alarms.push({ key: `s:${sh.id}:${sh.date}`, when: at(sh.date, sh.start) - before * 3600000, title: label, body: `${relDays(sh.date, today)} (${fmtDM(sh.date)}) ${rend} · ${sh.hours}h${sh.unit ? ` · ${sh.unit}` : ''}` });
+    const note = shiftNote(sh);
+    alarms.push({ key: `s:${sh.id}:${sh.date}`, when: at(sh.date, sh.start) - before * 3600000, title: label, body: `${relDays(sh.date, today)} (${fmtDM(sh.date)}) ${rend} · ${sh.hours}h${sh.unit ? ` · ${sh.unit}` : ''}${note ? ` · Obs.: ${note}` : ''}` });
   }
 
   const billDays = Number(s.billAlertDays) || 0;

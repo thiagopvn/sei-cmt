@@ -6,7 +6,7 @@ import { diffDays, fmtShort, fmtDM, monthLabel, relDays } from '../lib/dates.js'
 import { checklistFor, urgency } from '../domain/tasks.js';
 import { describeRule } from '../domain/recurrence.js';
 import { taskPayStatus } from '../domain/finance.js';
-import { shiftTone, dutyTag, rendPill } from './shiftui.js';
+import { shiftTone, dutyTag, rendPill, durationClass, noteLine } from './shiftui.js';
 
 export const areaOf = (state, id) => state.areas.find((a) => a.id === id) || null;
 export const typeOf = (state, id) => state.types.find((t) => t.id === id) || null;
@@ -124,24 +124,33 @@ export function chips(items, active, action, { all = null } = {}) {
 }
 
 export const LAYER_COLOR = { servico: 'duty', troca: 'swap', tarefa: 2, evento: 5, rotina: 3, financa: 4 };
+const LAYER_ICON = { servico: 'shield', tarefa: 'flag', evento: 'calendar', rotina: 'repeat', financa: 'wallet' };
+
+/** Cor de um item da agenda: tom do serviço, cor da área, ou a cor da camada. */
+export function agendaItemColor(state, it) {
+  if (it.layer === 'servico' && it.ref?.shift) return TONE_COLOR[shiftTone(it.ref.shift)];
+  if (it.layer === 'financa') return LAYER_COLOR.financa;
+  return areaOf(state, it.area)?.color || LAYER_COLOR[it.layer];
+}
 const TONE_COLOR = { meu: 'duty', outro: 'swap', pago: 'paid', areceber: 'due', perm: 'perm' };
 
 export function agendaItemRow(state, it) {
   const sh = it.layer === 'servico' ? it.ref.shift : null;
-  const color = sh ? TONE_COLOR[shiftTone(sh)]
-    : it.layer === 'financa' ? LAYER_COLOR.financa : areaOf(state, it.area)?.color || LAYER_COLOR[it.layer];
+  const color = agendaItemColor(state, it);
   const checkable = !!it.ref.taskId || it.layer === 'financa';
   const checkAction = it.ref.taskId
     ? `data-action="task-toggle" data-id="${esc(it.ref.taskId)}" data-key="${esc(it.ref.key)}"`
     : it.layer === 'financa' ? `data-action="fin-toggle" data-key="${esc(it.ref.item.key)}" data-month="${esc(it.ref.item.date.slice(0, 7))}"` : '';
   return `
-    <div class="row agenda-row layer-${it.layer} kind-${esc(it.kind)} ${it.done ? 'is-done' : ''}" role="button" tabindex="0"
-         data-action="agenda-open" data-item="${esc(it.id)}">
-      <span class="bar" style="--c: ${colorVar(color)}"></span>
+    <div class="row agenda-row layer-${it.layer} kind-${esc(it.kind)} ${sh ? durationClass(sh) : ''} ${it.done ? 'is-done' : ''}" role="button" tabindex="0"
+         data-action="agenda-open" data-item="${esc(it.id)}" style="--c: ${colorVar(color)}">
+      <span class="bar"></span>
+      <span class="layer-ic">${icon(sh ? (sh.active ? 'shield' : 'arrowRight') : LAYER_ICON[it.layer] || 'calendar', 16)}</span>
       <span class="agenda-time">${it.time ? esc(it.time) : '—'}</span>
       <div class="row-main">
         <div class="row-title">${esc(it.title)}</div>
         <div class="row-meta">${sh ? `${dutyTag(sh)}${rendPill(sh, state.settings)}` : ''}<span class="meta">${esc(it.sub)}</span>${it.layer !== 'servico' && it.area ? areaTag(state, it.area) : ''}</div>
+        ${sh ? noteLine(sh) : ''}
       </div>
       ${checkable ? `<button type="button" class="check ${it.done ? 'checked' : ''}" ${checkAction} aria-label="${it.done ? 'Desmarcar' : 'Marcar como feito'}">${icon('check', 14)}</button>` : ''}
     </div>`;

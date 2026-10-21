@@ -237,3 +237,36 @@ test('cor do app: só aceita as cores conhecidas (cada conta tem a sua)', () => 
   assert.equal(migrate({ settings: { accent: '"><script>' } }).settings.accent, 'vermelho');
   assert.equal(migrate({}).settings.accent, 'vermelho');
 });
+
+test('calendário: serviço de menos de 24h é "parcial" (claro) e mostra as horas; 24h e 48h são cheios', async () => {
+  const { isPartial, durationClass, timeSpan, shiftPill, shiftLegend } = await import('../js/ui/shiftui.js');
+  const { shiftsInRange } = await import('../js/domain/shifts.js');
+  const s = defaultState();
+  s.services = [
+    { id: 'a', date: '2026-10-11', start: '08:00', hours: 24, type: 'ordinario' },
+    { id: 'b', date: '2026-10-13', start: '08:00', hours: 10, type: 'ordinario' },
+    { id: 'c', date: '2026-10-15', start: '08:00', hours: 48, type: 'ordinario' },
+  ];
+  // Troca: tiro o serviço de DIAS no dia 22 (10h) e o de SILVA no dia 24 (24h).
+  s.swaps = [
+    { id: 'w1', colleague: 'Cap Dias', myDate: '2026-10-11', theirDate: '2026-10-22', serviceId: 'a', start: '08:00', hours: 10 },
+    { id: 'w2', colleague: 'Sgt Silva', myDate: '2026-10-15', theirDate: '2026-10-24', serviceId: 'c', start: '08:00', hours: 24 },
+  ];
+  const on = (d) => shiftsInRange(s, d, d)[0];
+  assert.equal(isPartial(on('2026-10-13')), true);
+  assert.equal(isPartial(on('2026-10-15')), false); // 48h: cheio
+  assert.equal(isPartial(on('2026-10-24')), false);
+  assert.equal(durationClass(on('2026-10-22')), 'd-parcial');
+  assert.equal(timeSpan(on('2026-10-13')), '8h–18h');
+  assert.equal(timeSpan({ date: '2026-10-13', start: '18:00', hours: 14 }), '18h–8h');
+
+  const p10 = shiftPill(on('2026-10-22'), s, '2026-10-21');
+  const p24 = shiftPill(on('2026-10-24'), s, '2026-10-21');
+  assert.match(p10.cls, /t-outro .*d-parcial/);
+  assert.match(p24.cls, /t-outro .*d-cheio/);
+  assert.match(p10.short, /<b class="hrs">10h<\/b>/); // no celular as horas entram no lugar da data da troca
+  assert.doesNotMatch(p24.short, /24h/); // 24h de outro militar segue mostrando a data da troca
+  assert.match(p10.long, /8h–18h/);
+  assert.match(p10.tip, /10h \(8h–18h\)/);
+  assert.match(shiftLegend(), /Menos de 24h/);
+});

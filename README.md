@@ -13,8 +13,9 @@ Aplicativo (PWA) para organizar a vida pessoal e profissional em um só lugar: *
 **Escala**
 - Gerador automático: 24×72, 24×48, 24×96, 12×36, 12×60, dias fixos da semana ou a cada N dias.
 - Serviços ordinários, extras pagos (com valor), sobreaviso e outros.
-- **Calendário sem confusão**: etiqueta **sólida = eu tiro** (vermelho: meu · roxo: de outro militar · verde/dourado: extra recebido/a receber) e **tracejada = permutado, não tiro** (com a data da devolução). Marca-texto amarelo quando a **rendição** foge do padrão (ex.: rende 18h em vez de 08h).
-- **Ficha do serviço**: ao tocar num serviço, mostra “Você tira / Você NÃO tira”, rendição, saída, o caminho da troca e as ações (trocar, repassar, ver troca, desfazer).
+- **Calendário sem confusão**: a cor diz **de quem é** (vermelho: meu · roxo: de outro militar · verde/dourado: extra recebido/a receber); **cheio = 24h** e **claro, com as horas em destaque = menos de 24h** (6h, 8h, 10h, 12h, 14h…); **tracejado = permutado, não tiro** (com a data da devolução). Marca-texto amarelo quando a **rendição** foge do padrão (ex.: rende 18h em vez de 08h).
+- **Observação no serviço** (ex.: “quem vai tirar é o Sgt X”, “pode ter troca”): o card ganha uma dobra laranja no canto, o texto aparece ao passar o mouse (ou ao tocar, no painel do dia e na ficha) e os serviços dos próximos 7 dias com observação entram no Radar do Início e na notificação do serviço.
+- **Ficha do serviço**: ao tocar num serviço, mostra “Você tira / Você NÃO tira”, a observação (editável ali mesmo), rendição, saída, o caminho da troca e as ações (trocar, repassar, ver troca, desfazer).
 - **Trocas**: quem tira o seu serviço e quando você devolve (ou “a combinar”); **permuta da permuta** (repassar o serviço que você tiraria por uma troca, quantas vezes precisar); saldo por militar (quem deve a quem) e botão para conversar no WhatsApp.
 - **Pagamentos**: previsão de pagamento de cada serviço extra, avisos de pagamento atrasado e botão “Recebi”.
 
@@ -35,7 +36,8 @@ Aplicativo (PWA) para organizar a vida pessoal e profissional em um só lugar: *
 - Visões: lista por prazo, quadro (arrastar entre colunas), **rotinas** (diárias, semanais, mensais, anuais, com sequência e histórico) e **tempo** (cronômetro/Pomodoro por tarefa, com relatório).
 
 **Agenda**
-- Mês com camadas (serviços, prazos, compromissos, rotinas, finanças) e filtro por área; painel do dia; lista dos próximos 45 dias.
+- Mês com camadas (serviços, prazos, compromissos, rotinas, finanças) e filtro por área; painel do dia; lista dos próximos 45 dias (tarefas sem prazo aparecem ao final, em “Sem data”).
+- Tudo o que é criado em Tarefas entra na agenda como **card** na cor da área (no computador, como etiquetas dentro do mês). Tocar num prazo ou compromisso abre um **card de detalhes**: quando, onde, repetição, lembrete, etapas (marcáveis ali mesmo), observação, aviso de conflito com o serviço e as ações (concluir, editar).
 - Compromissos de um dia, de vários dias (férias/afastamento) ou repetidos; lembretes.
 
 **Ajustes**
