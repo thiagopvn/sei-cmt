@@ -8,6 +8,7 @@ import { ledger, setSettled } from './domain/finance.js';
 import { shiftsInRange } from './domain/shifts.js';
 import { openTaskForm } from './forms/task.js';
 import { openEventForm } from './forms/event.js';
+import { openTaskSheet, openEventSheet } from './forms/item.js';
 import { openServiceForm, openSwapForm, openGeneratorForm } from './forms/service.js';
 import { openShiftSheet } from './forms/shift.js';
 import { openEntryForm, openCardForm } from './forms/finance.js';
@@ -184,12 +185,13 @@ export const actions = {
     const id = el.dataset.item;
     const state = store.get();
     const [kind, a, b] = id.split(':');
+    // Tarefa e compromisso abrem o card de detalhes (o formulário fica no "Editar").
     if (kind === 't') {
       const t = findTask(a);
-      if (t) openTaskForm({ task: t, key: b });
+      if (t) openTaskSheet({ task: t, key: b });
     } else if (kind === 'ev') {
       const ev = state.events.find((x) => x.id === a);
-      if (ev) openEventForm({ event: ev, date: b });
+      if (ev) openEventSheet({ event: ev, date: b });
     } else if (kind === 'sh') {
       const shiftId = id.slice(3);
       const sh = shiftsInRange(state, '0000-01-01', '9999-12-31').find((x) => x.id === shiftId);

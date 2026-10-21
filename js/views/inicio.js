@@ -3,9 +3,10 @@
 import { esc, money, plural, sum } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addDays, fmtLong, fmtShort, monthOf, relDays, toMin, fromMin, hoursLabel } from '../lib/dates.js';
-import { onDutyNow, nextShift, shiftsInRange, monthStats, permutaLabel, ownersOf, ownersText, rendicao } from '../domain/shifts.js';
+import { onDutyNow, nextShift, shiftsInRange, monthStats, permutaLabel, ownersOf, ownersText, rendicao, shiftNote } from '../domain/shifts.js';
 import { collectRange, conflicts } from '../domain/agenda.js';
 import { radar } from '../domain/insights.js';
+import { noteLine } from '../ui/shiftui.js';
 import { openItems, remaining } from '../domain/finance.js';
 import { activeInstance } from '../domain/tasks.js';
 import { agendaItemRow, tile, emptyState } from '../ui/parts.js';
@@ -30,7 +31,7 @@ function statusCard(state, today) {
     return `<div class="status-card on-duty">
       <span class="status-ic">${icon('shield', 22)}</span>
       <div><strong>${duty.owner ? `De serviço — serviço de ${esc(ownersText(ownersOf(duty)))}` : 'Você está de serviço — meu serviço'}</strong>
-      <span>Até ${endDay === today ? 'hoje' : relDays(endDay, today)} às ${end}${duty.unit ? ` · ${esc(duty.unit)}` : ''}</span></div>
+      <span>Até ${endDay === today ? 'hoje' : relDays(endDay, today)} às ${end}${duty.unit ? ` · ${esc(duty.unit)}` : ''}</span>${noteLine(duty)}</div>
     </div>`;
   }
   const covered = shiftsInRange(state, today, today).find((s) => s.kind === 'coberto');
@@ -40,7 +41,7 @@ function statusCard(state, today) {
     : 'Nenhum serviço cadastrado à frente';
   return `<div class="status-card">
     <span class="status-ic">${icon(covered ? 'swap' : 'sun', 22)}</span>
-    <div><strong>${covered ? `Folga — serviço ${esc(permutaLabel(covered).replace(/^Permutado/, 'permutado'))} (${esc(covered.colleague)})` : 'Folga hoje'}</strong><span>${nextTxt}</span></div>
+    <div><strong>${covered ? `Folga — serviço ${esc(permutaLabel(covered).replace(/^Permutado/, 'permutado'))} (${esc(covered.colleague)})` : 'Folga hoje'}</strong><span>${nextTxt}</span>${next ? noteLine(next) : ''}</div>
   </div>`;
 }
 

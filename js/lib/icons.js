@@ -55,6 +55,7 @@ const P = {
   zap: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>',
   target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
   file: '<path d="M14.5 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-12l-5-5Z"/><path d="M14.5 2.5v5h5M8.5 13h7M8.5 17h5"/>',
+  note: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M8 9h8M8 13h5"/>',
   install: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7v7M9 11l3 3 3-3"/>',
   cloud: '<path d="M17.5 19a4.5 4.5 0 0 0 .9-8.9A6 6 0 0 0 6.6 9.4 4.8 4.8 0 0 0 7 19h10.5Z"/>',
   cloudOff: '<path d="m2 2 20 20"/><path d="M5.8 8.2A4.8 4.8 0 0 0 7 19h10.5c.6 0 1.1-.1 1.6-.3"/><path d="M21.5 15.6A4.5 4.5 0 0 0 18.4 10 6 6 0 0 0 9.6 6"/>',

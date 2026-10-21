@@ -89,7 +89,7 @@ export function openServiceForm({ service = null, date = null } = {}) {
         ${field('Recebido em', input('receivedAt', s.receivedAt || todayKey(), 'type="date"'))}
       </div>
     </div>
-    ${field('Anotações', textarea('notes', s.notes, 'placeholder="Equipe, observações…"'))}
+    ${field('Observação', textarea('notes', s.notes, 'rows="2" maxlength="400" placeholder="Ex.: quem vai tirar é o Sgt X · pode ter troca · confirmar com o Cap Y"'), { hint: 'Aparece marcada no card do calendário, no painel do dia e no Início.' })}
   `;
   const footer = `
     ${service ? `<button type="button" class="btn btn-ghost-danger" data-delete>${icon('trash', 16)}Excluir</button>` : ''}
@@ -261,7 +261,7 @@ export function openSwapForm({ swap = null, myDate = '', theirDate = '', service
       </div>
     </div>
     ${timeFields(w.start, w.hours, def)}
-    ${field('Observações', textarea('notes', w.notes))}
+    ${field('Observação', textarea('notes', w.notes, 'rows="2" maxlength="400" placeholder="Ex.: ele pode pedir para trocar de novo · confirmar a data"'), { hint: 'Aparece marcada no card do serviço trocado, no painel do dia e no Início.' })}
     ${swap ? toggle('settled', w.settled, 'Marcar troca como quitada') : ''}
   `;
   const footer = `

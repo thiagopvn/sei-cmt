@@ -5,7 +5,7 @@ import { icon } from '../lib/icons.js';
 import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, fromKey, todayKey } from '../lib/dates.js';
 import { collectRange, conflicts, LAYERS } from '../domain/agenda.js';
 import { shiftPill, shiftLegend, byDuty } from '../ui/shiftui.js';
-import { agendaItemRow, monthNav, tabs, emptyState, dot, colorVar, LAYER_COLOR } from '../ui/parts.js';
+import { agendaItemRow, monthNav, tabs, emptyState, dot, colorVar, LAYER_COLOR, agendaItemColor } from '../ui/parts.js';
 import { rerender } from '../ui/bus.js';
 
 const PREF = 'pauta:agenda';
@@ -53,7 +53,7 @@ function cellHtml(state, d, items, today, M) {
   }).join('');
   // Mais de um serviço no dia: mostra até dois e "+N".
   const pills = shifts.map((sh) => shiftPill(sh, state, today));
-  const shown = pills.slice(0, 2).map((p) => `<span class="cal-shift ${p.cls}" title="${esc(p.tip)}"><span class="lbl-long">${p.long}</span><span class="lbl-short">${p.short}</span></span>`).join('')
+  const shown = pills.slice(0, 2).map((p) => `<span class="cal-shift ${p.cls}" title="${esc(p.tip)}"><span class="lbl-long">${p.long}</span><span class="lbl-short">${p.short}</span>${p.note ? `<small class="cal-note">${icon('note', 9)}${esc(p.note)}</small>` : ''}</span>`).join('')
     + (pills.length > 2 ? `<span class="cal-more-shift">+${pills.length - 2}</span>` : '');
   const tips = pills.map((p) => p.tip).join('; ');
   return `<button type="button" class="cal-cell ${monthOf(d) !== M ? 'out' : ''} ${d === today ? 'today' : ''} ${d === selected ? 'selected' : ''} ${shifts.length ? 'has-shift' : ''}"
@@ -61,7 +61,7 @@ function cellHtml(state, d, items, today, M) {
     <span class="cal-num">${fromKey(d).getDate()}</span>
     ${shown}
     <span class="cal-dots">${dots}${others.length > 4 ? '<span class="cal-more">+</span>' : ''}</span>
-    <span class="cal-items">${others.slice(0, 3).map((i) => `<span class="cal-item ${i.done ? 'is-done' : ''}">${i.time ? `${i.time} ` : ''}${esc(i.title)}</span>`).join('')}${others.length > 3 ? `<span class="cal-item muted">+${others.length - 3}</span>` : ''}</span>
+    <span class="cal-items">${others.slice(0, 3).map((i) => `<span class="cal-item ${i.done ? 'is-done' : ''}" style="--c: ${colorVar(agendaItemColor(state, i))}" title="${esc(i.title)}${i.sub ? ` · ${esc(i.sub)}` : ''}">${i.time ? `<b>${esc(i.time)}</b> ` : ''}${esc(i.title)}</span>`).join('')}${others.length > 3 ? `<span class="cal-item cal-item-more">+${others.length - 3}</span>` : ''}</span>
   </button>`;
 }
 
@@ -98,11 +98,18 @@ export default {
       const from = month === monthOf(today) ? today : monthStart(month);
       const map = collectRange(state, from, addDays(from, 45), opts);
       const days = [...map.entries()].filter(([, items]) => items.length);
-      body = days.length ? `<div class="agenda-list">${days.map(([d, items]) => `
+      // Tarefas sem prazo também aparecem na lista (ao final), para nada criado em Tarefas ficar invisível aqui.
+      const undated = ui.layers.includes('tarefa') ? state.tasks.filter((t) => !t.recurrence && !t.due && t.status !== 'done' && (!ui.area || t.area === ui.area)) : [];
+      const undatedBlock = undated.length ? `
+        <div class="day-block">
+          <div class="day-head sticky"><strong>Sem data</strong><span class="muted">${undated.length === 1 ? '1 tarefa sem prazo' : `${undated.length} tarefas sem prazo`}</span></div>
+          <div class="list">${undated.map((t) => agendaItemRow(state, { id: `t:${t.id}:once`, layer: 'tarefa', area: t.area, time: null, kind: 'prazo', title: t.title, sub: 'Sem prazo definido', done: false, ref: { taskId: t.id, key: 'once' } })).join('')}</div>
+        </div>` : '';
+      body = days.length || undated.length ? `<div class="agenda-list">${days.map(([d, items]) => `
         <div class="day-block">
           <div class="day-head sticky"><strong>${fmtShort(d)}</strong><span class="muted">${relDays(d, today)}</span></div>
           <div class="list">${items.map((it) => agendaItemRow(state, it)).join('')}</div>
-        </div>`).join('')}</div>` : emptyState('calendar', 'Nada nos próximos 45 dias', 'Ajuste os filtros ou adicione algo.');
+        </div>`).join('')}${undatedBlock}</div>` : emptyState('calendar', 'Nada nos próximos 45 dias', 'Ajuste os filtros ou adicione algo.');
     } else {
       const ws = Number(state.settings.weekStart) || 0;
       const first = startOfWeek(monthStart(month), ws);

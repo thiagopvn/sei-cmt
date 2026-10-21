@@ -3,9 +3,9 @@
 import { esc, money, plural, sum } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { addMonths, monthOf, monthStart, monthEnd, startOfWeek, addDays, fromKey, fmtShort, fmtDM, relDays, WEEKDAYS_SHORT, WEEKDAYS_MIN, hoursLabel, monthShortLabel, todayKey } from '../lib/dates.js';
-import { shiftsInRange, shiftTitle, permutaLabel, permutaDoMeuDia, shortName, ownerLabel, ownersOf, ownersShort, payerLabel, monthStats, swapStatus, swapBalance, SWAP_LABEL, pendingPayments, payStatus, PAY_LABEL } from '../domain/shifts.js';
+import { shiftsInRange, shiftTitle, permutaLabel, permutaDoMeuDia, shortName, ownerLabel, ownersOf, ownersShort, payerLabel, monthStats, swapStatus, swapBalance, SWAP_LABEL, pendingPayments, payStatus, PAY_LABEL, shiftNote } from '../domain/shifts.js';
 import { openShift } from '../actions.js';
-import { shiftTone, shiftLegend, byDuty, dutyTag, rendBadge, rendPill } from '../ui/shiftui.js';
+import { shiftTone, shiftLegend, byDuty, dutyTag, rendBadge, rendPill, isPartial, durationClass, timeSpan, noteLine } from '../ui/shiftui.js';
 import { tile, monthNav, tabs, emptyState } from '../ui/parts.js';
 import { columns, bindCharts } from '../ui/charts.js';
 import { whatsappLink } from '../forms/service.js';
@@ -25,15 +25,17 @@ function miniCalendar(state, M, shifts, today) {
     const out = monthOf(d) !== M;
     const owners = sh?.kind === 'servico' ? ownersOf(sh) : [];
     const more = list.length > 1 ? `<small class="mini-more">+${list.length - 1}</small>` : '';
-    // Rendição fora do padrão aparece no lugar do nome (é o que muda a rotina do dia).
+    // Cabe um detalhe: rendição fora do padrão > horas (se menos de 24h) > nome / data da permuta.
     const rend = sh && sh.active ? rendBadge(sh, state.settings, 9) : '';
     const sub = rend ? `<small class="mini-sub">${rend}</small>`
-      : sh?.kind === 'coberto' && sh.swap?.theirDate ? `<small class="mini-sub" title="Permutado para o dia ${fmtDM(sh.swap.theirDate)}">${fmtDM(sh.swap.theirDate)}</small>`
-        : sh?.kind === 'cobrindo' ? `<small class="mini-sub">${esc(shortName(sh.colleague))}</small>`
-          : sh?.kind === 'servico' && owners.length ? `<small class="mini-sub">${esc(ownersShort(owners))}</small>` : '';
-    return `<button type="button" class="mini-cell ${out ? 'out' : ''} ${d === today ? 'today' : ''} ${sh ? `t-${shiftTone(sh)}` : ''}"
+      : sh?.active && isPartial(sh) ? `<small class="mini-sub hrs" title="${esc(timeSpan(sh))}">${sh.hours}h</small>`
+        : sh?.kind === 'coberto' && sh.swap?.theirDate ? `<small class="mini-sub" title="Permutado para o dia ${fmtDM(sh.swap.theirDate)}">${fmtDM(sh.swap.theirDate)}</small>`
+          : sh?.kind === 'cobrindo' ? `<small class="mini-sub">${esc(shortName(sh.colleague))}</small>`
+            : sh?.kind === 'servico' && owners.length ? `<small class="mini-sub">${esc(ownersShort(owners))}</small>` : '';
+    const note = list.map(shiftNote).filter(Boolean).join(' · ');
+    return `<button type="button" class="mini-cell ${out ? 'out' : ''} ${d === today ? 'today' : ''} ${sh ? `t-${shiftTone(sh)} ${durationClass(sh)}` : ''} ${note ? 'has-note' : ''}" ${note ? `title="Observação: ${esc(note)}"` : ''}
       ${out ? 'tabindex="-1"' : ''} data-action="${sh ? 'es-open' : 'service-new'}" data-date="${esc(d)}" data-shift="${esc(sh ? sh.id : '')}"
-      aria-label="${fmtShort(d)}${list.length ? `: ${esc(list.map((x) => `${x.active ? 'eu tiro' : 'não tiro'} — ${shiftTitle(x)}`).join('; '))}` : ': sem serviço, toque para adicionar'}">${fromKey(d).getDate()}${sub}${more}</button>`;
+      aria-label="${fmtShort(d)}${list.length ? `: ${esc(list.map((x) => `${x.active ? 'eu tiro' : 'não tiro'} — ${shiftTitle(x)} · ${x.hours}h`).join('; '))}${note ? `. Observação: ${esc(note)}` : ''}` : ': sem serviço, toque para adicionar'}">${fromKey(d).getDate()}${sub}${more}</button>`;
   }).join('');
   return `<div class="mini-cal card">
     <div class="mini-head">${Array.from({ length: 7 }, (_, i) => `<span>${WEEKDAYS_MIN[(ws + i) % 7]}</span>`).join('')}</div>
@@ -56,18 +58,21 @@ function shiftRow(state, sh, today) {
     ? `<span class="pill pill-troca">${icon('swap', 13)}${esc(permutaDoMeuDia(sh))}</span>`
     : sh.kind === 'coberto' ? `<span class="pill pill-perm">${icon('arrowRight', 13)}${esc(permutaLabel(sh))} · ${esc(sh.colleague)} tira</span>`
       : `<span class="meta">${icon('user', 13)}${esc(ownerLabel(sh))}</span>`;
-  return `<div class="row shift-row kind-${sh.kind} t-${shiftTone(sh)} ${sh.date < today ? 'is-past' : ''}" role="button" tabindex="0" data-action="es-open" data-shift="${esc(sh.id)}">
+  return `<div class="row shift-row kind-${sh.kind} t-${shiftTone(sh)} ${durationClass(sh)} ${sh.date < today ? 'is-past' : ''}" role="button" tabindex="0" data-action="es-open" data-shift="${esc(sh.id)}">
     <div class="date-block ${sh.date === today ? 'today' : ''}"><strong>${d.getDate()}</strong><span>${WEEKDAYS_SHORT[d.getDay()]}</span></div>
     <div class="row-main">
       <div class="row-title">${esc(sh.kind === 'cobrindo' ? shiftTitle(sh) : sh.kind === 'servico' ? shiftTitle(sh) : sh.service ? shiftTitle({ ...sh, kind: 'servico' }) : 'Serviço')}</div>
       <div class="row-meta">
         ${dutyTag(sh)}${rendPill(sh, state.settings)}
-        <span class="meta">${icon('clock', 13)}${sh.start} · ${hoursLabel(sh.hours)}</span>
+        ${isPartial(sh)
+    ? `<span class="pill pill-hrs" title="Serviço de menos de 24h: ${esc(timeSpan(sh))}">${icon('clock', 13)}${sh.hours}h · ${esc(timeSpan(sh))}</span>`
+    : `<span class="meta">${icon('clock', 13)}${sh.start} · ${hoursLabel(sh.hours)}</span>`}
         ${sh.unit ? `<span class="meta">${icon('mapPin', 13)}${esc(sh.unit)}</span>` : ''}
         ${kindPill}
         ${sh.paid ? `<span class="meta">${icon('coins', 13)}${money(sh.value)}</span>` : ''}
         ${payPill(pay)}
       </div>
+      ${noteLine(sh)}
     </div>
     ${pay && pay !== 'recebido' && sh.date <= today ? `<button type="button" class="btn btn-sm" data-action="service-received" data-id="${esc(sh.service.id)}">${icon('check', 14)}Recebi</button>` : ''}
   </div>`;

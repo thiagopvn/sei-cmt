@@ -5,10 +5,11 @@ import { store } from '../store.js';
 import { esc, money } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
 import { fmtLong, fmtShort, fmtDM, hoursLabel, todayKey } from '../lib/dates.js';
-import { openModal } from '../ui/overlay.js';
+import { openModal, toast } from '../ui/overlay.js';
+import { textarea } from '../ui/fields.js';
 import {
   shiftsInRange, swapChain, shiftEnd, rendicao, hhLabel, ownersOf, ownersText, permutaLabel,
-  SERVICE_TYPES, payStatus, PAY_LABEL,
+  SERVICE_TYPES, payStatus, PAY_LABEL, shiftNotes,
 } from '../domain/shifts.js';
 import { shiftTone } from '../ui/shiftui.js';
 import { openServiceForm, openSwapForm, undoSwap } from './service.js';
@@ -62,6 +63,17 @@ export function openShiftSheet(shift) {
     <span class="db-ic">${icon(works ? 'shield' : 'arrowRight', 22)}</span>
     <div><strong>${works ? 'Você tira este serviço' : 'Você NÃO tira este serviço'}</strong><small>${esc(whoLine(sh, state, today))}</small></div>
   </div>`;
+  // Observação: em destaque logo abaixo do "você tira / não tira", com edição aqui mesmo.
+  // Grava no serviço (se existe) ou na troca.
+  const notes = shiftNotes(sh);
+  const target = sh.service ? { list: 'services', id: sh.service.id } : sh.swap ? { list: 'swaps', id: sh.swap.id } : null;
+  const current = (sh.service ? sh.service.notes : sh.swap?.notes) || '';
+  const noteBox = `<section class="note-box ${notes.length ? '' : 'is-empty'}">
+    <div class="note-head">${icon('note', 16)}<strong>Observação</strong>${target ? `<button type="button" class="link-btn" data-sh="note">${notes.length ? 'Editar' : 'Adicionar'}</button>` : ''}</div>
+    ${notes.length ? `<p class="note-text">${notes.map((n) => esc(n.text)).join('<br>')}</p>` : '<p class="muted small">Nada anotado. Ex.: quem vai tirar, se pode ter troca, o que confirmar.</p>'}
+    ${target ? `<div class="note-edit" hidden><div class="field">${textarea('note', current, 'rows="3" maxlength="400" placeholder="Ex.: quem vai tirar é o Sgt X · pode ter troca · confirmar com o Cap Y"')}</div>
+      <div class="note-actions"><button type="button" class="btn btn-sm" data-sh="note-cancel">Cancelar</button><button type="button" class="btn btn-sm btn-primary" data-sh="note-save">Salvar</button></div></div>` : ''}
+  </section>`;
   const facts = `<dl class="facts">
     <div class="${rend ? 'is-rend' : ''}"><dt>Rendição</dt><dd>${rend ? `<b class="rend">${icon('clock', 12)}${esc(hhLabel(rend))}</b> fora do padrão (${esc(def)})` : esc(sh.start)}</dd></div>
     <div><dt>Saída</dt><dd>${end.date === sh.date ? '' : `${fmtShort(end.date)} · `}${esc(end.time)}</dd></div>
@@ -88,12 +100,31 @@ export function openShiftSheet(shift) {
   const m = openModal({
     title: fmtLong(sh.date),
     size: 'sm',
-    body: `${banner}${facts}${chainHtml(state, sh)}
+    body: `${banner}${noteBox}${facts}${chainHtml(state, sh)}
       ${sh.kind === 'cobrindo' ? '<p class="muted small">Não vai poder tirar? Use “Repassar” para passar este serviço a outro militar — dá para repassar quantas vezes precisar.</p>' : ''}`,
     footer: `<div class="sheet-actions">${footer}</div>`,
     onMount(el) {
+      // Observação editada aqui mesmo (sem <form>: a janela já trata o submit do formulário principal).
+      const noteEdit = el.querySelector('.note-edit');
+      const noteInput = noteEdit?.querySelector('textarea');
       el.querySelectorAll('[data-sh]').forEach((b) => b.addEventListener('click', async () => {
         const k = b.dataset.sh;
+        if (k === 'note' || k === 'note-cancel') {
+          noteEdit.hidden = k === 'note-cancel';
+          if (k === 'note') noteInput.focus();
+          return;
+        }
+        if (k === 'note-save') {
+          const text = noteInput.value.trim();
+          store.update((st) => {
+            const rec = st[target.list].find((x) => x.id === target.id);
+            if (rec) rec.notes = text;
+          });
+          toast(text ? 'Observação salva' : 'Observação removida');
+          m.close();
+          openShiftSheet(shift);
+          return;
+        }
         if (k === 'undo') {
           if (await undoSwap(sh.swap)) m.close();
           return;

@@ -6,7 +6,7 @@ import { money, plural, sum } from '../lib/util.js';
 import { activeInstance } from './tasks.js';
 import { openItems, invoice, remaining, openInvoiceMonth, cardUsed } from './finance.js';
 import { budgetStatus } from './budgets.js';
-import { pendingPayments, swapStatus } from './shifts.js';
+import { pendingPayments, swapStatus, shiftsInRange, shiftTitle, shiftNote } from './shifts.js';
 import { conflicts } from './agenda.js';
 import { monthOf } from '../lib/dates.js';
 
@@ -149,6 +149,19 @@ export function radar(state, today, { synced = false } = {}) {
       title: `A receber por trabalhos · ${money(sum(taskIncome, (t) => t.value))}`,
       detail: names(taskIncome.map((t) => t.title)),
       to: '#/financas',
+    });
+  }
+
+  // Observações nos serviços dos próximos 7 dias: o que você anotou no card aparece aqui,
+  // sem precisar lembrar que aquele serviço tem uma particularidade.
+  for (const sh of shiftsInRange(state, today, addDays(today, 7))) {
+    const note = shiftNote(sh);
+    if (!note) continue;
+    out.push({
+      level: diffDays(today, sh.date) <= 2 ? 'warning' : 'info', icon: 'note',
+      title: `${sh.active ? '' : 'Não tiro — '}${shiftTitle(sh)} · ${relDays(sh.date, today)} (${fmtDM(sh.date)})${sh.unit ? ` · ${sh.unit}` : ''}`,
+      detail: note,
+      to: `#/agenda?d=${sh.date}`,
     });
   }
 
