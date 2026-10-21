@@ -143,7 +143,9 @@ export function dutyTag(sh) {
 
 /** Legenda única do calendário e do mini-calendário: a cor diz de quem é; cheio/claro diz a duração. */
 export function shiftLegend() {
-  return `<div class="cal-legend">
+  // No celular começa recolhida; no computador fica sempre aberta (o resumo some via CSS).
+  const open = typeof matchMedia !== 'function' || matchMedia('(min-width: 900px)').matches;
+  return `<details class="cal-legend-box" ${open ? 'open' : ''}><summary>${icon('chevronDown', 14)}Legenda</summary><div class="cal-legend">
     <span><span class="legend-sw t-meu"></span>Meu serviço</span>
     <span><span class="legend-sw t-outro"></span>De outro militar (eu tiro)</span>
     <span><span class="legend-sw t-pago"></span>Extra recebido</span>
@@ -154,5 +156,5 @@ export function shiftLegend() {
     <span><span class="legend-sw d-parcial">10h</span>Menos de 24h (claro, com as horas)</span>
     <span><b class="rend">${icon('clock', 10)}18h</b>Rendição fora das 08h</span>
     <span><span class="legend-sw has-note"></span>Com observação (passe o mouse ou toque)</span>
-  </div>`;
+  </div></details>`;
 }

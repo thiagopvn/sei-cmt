@@ -2,9 +2,10 @@
 
 import { esc } from '../lib/util.js';
 import { icon } from '../lib/icons.js';
-import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, fromKey, todayKey } from '../lib/dates.js';
+import { addDays, addMonths, monthOf, monthStart, startOfWeek, fmtLong, fmtShort, relDays, WEEKDAYS_SHORT, WEEKDAYS_MIN, fromKey, todayKey } from '../lib/dates.js';
 import { collectRange, conflicts, LAYERS } from '../domain/agenda.js';
-import { shiftPill, shiftLegend, byDuty } from '../ui/shiftui.js';
+import { shiftPill, shiftLegend, byDuty, shiftTone } from '../ui/shiftui.js';
+import { actions } from '../actions.js';
 import { agendaItemRow, monthNav, tabs, emptyState, dot, colorVar, LAYER_COLOR, agendaItemColor } from '../ui/parts.js';
 import { rerender } from '../ui/bus.js';
 import { exportAgendaPdf } from '../print.js';
@@ -48,22 +49,35 @@ function cellHtml(state, d, items, today, M) {
   // Os que eu tiro vêm primeiro; o permutado (tracejado) depois.
   const shifts = items.filter((i) => i.layer === 'servico').map((i) => i.ref.shift).sort(byDuty);
   const others = items.filter((i) => i.layer !== 'servico');
-  const dots = others.slice(0, 4).map((i) => {
-    const color = i.layer === 'financa' ? LAYER_COLOR.financa : state.areas.find((a) => a.id === i.area)?.color || LAYER_COLOR[i.layer];
-    return `<span class="dot ${i.done ? 'hollow' : ''}" style="--c: ${colorVar(color)}"></span>`;
-  }).join('');
-  // Mais de um serviço no dia: mostra até dois e "+N".
-  const pills = shifts.map((sh) => shiftPill(sh, state, today));
-  const shown = pills.slice(0, 2).map((p) => `<span class="cal-shift ${p.cls}" title="${esc(p.tip)}"><span class="lbl-long">${p.long}</span><span class="lbl-short">${p.short}</span>${p.note ? `<small class="cal-note">${icon('note', 9)}${esc(p.note)}</small>` : ''}</span>`).join('')
+  // No celular os dois primeiros itens aparecem em texto; do terceiro em diante, bolinhas.
+  const dots = others.slice(2, 6).map((i) => `<span class="dot ${i.done ? 'hollow' : ''}" style="--c: ${colorVar(agendaItemColor(state, i))}"></span>`).join('');
+  // Mais de um serviço no dia: mostra até dois e "+N". Tocar no serviço abre a ficha.
+  const pills = shifts.map((sh) => ({ sh, p: shiftPill(sh, state, today) }));
+  const shown = pills.slice(0, 2).map(({ sh, p }) => `<span class="cal-shift ${p.cls}" data-item="sh:${esc(sh.id)}" title="${esc(p.tip)}"><span class="lbl-long">${p.long}</span><span class="lbl-short">${p.short}</span>${p.note ? `<small class="cal-note">${icon('note', 9)}${esc(p.note)}</small>` : ''}</span>`).join('')
     + (pills.length > 2 ? `<span class="cal-more-shift">+${pills.length - 2}</span>` : '');
   const tips = pills.map((p) => p.tip).join('; ');
   return `<button type="button" class="cal-cell ${monthOf(d) !== M ? 'out' : ''} ${d === today ? 'today' : ''} ${d === selected ? 'selected' : ''} ${shifts.length ? 'has-shift' : ''}"
     data-action="ag-select" data-date="${esc(d)}" aria-label="${fmtLong(d)}${tips ? `, ${esc(tips)}` : ''}${items.length ? `, ${items.length} itens` : ''}" aria-pressed="${d === selected}">
     <span class="cal-num">${fromKey(d).getDate()}</span>
     ${shown}
-    <span class="cal-dots">${dots}${others.length > 4 ? '<span class="cal-more">+</span>' : ''}</span>
-    <span class="cal-items">${others.slice(0, 3).map((i) => `<span class="cal-item ${i.done ? 'is-done' : ''}" style="--c: ${colorVar(agendaItemColor(state, i))}" title="${esc(i.title)}${i.sub ? ` · ${esc(i.sub)}` : ''}">${i.time ? `<b>${esc(i.time)}</b> ` : ''}${esc(i.title)}</span>`).join('')}${others.length > 3 ? `<span class="cal-item cal-item-more">+${others.length - 3}</span>` : ''}</span>
+    <span class="cal-items">${others.slice(0, 3).map((i, n) => `<span class="cal-item ${i.done ? 'is-done' : ''} ${n >= 2 ? 'd-only' : ''}" data-item="${esc(i.id)}" style="--c: ${colorVar(agendaItemColor(state, i))}" title="${esc(i.title)}${i.sub ? ` · ${esc(i.sub)}` : ''}">${i.time ? `<b>${esc(i.time)}</b> ` : ''}${esc(i.title)}</span>`).join('')}${others.length > 3 ? `<span class="cal-item cal-item-more d-only">+${others.length - 3}</span>` : ''}</span>
+    <span class="cal-dots">${dots}${others.length > 6 ? '<span class="cal-more">+</span>' : ''}</span>
   </button>`;
+}
+
+/** Faixa com os 7 dias da semana do dia escolhido (celular): troca de dia sem voltar ao mês. */
+function weekStrip(state, d, today) {
+  const ws = Number(state.settings.weekStart) || 0;
+  const start = startOfWeek(d, ws);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const map = collectRange(state, days[0], days[6], { layers: ui.layers, area: ui.area || null });
+  return `<div class="week-strip" aria-label="Dias da semana">${days.map((k) => {
+    const items = map.get(k) || [];
+    const shifts = items.filter((i) => i.layer === 'servico').map((i) => i.ref.shift).sort(byDuty);
+    const dots = items.filter((i) => i.layer !== 'servico').slice(0, 3).map((i) => `<i style="--c: ${colorVar(agendaItemColor(state, i))}"></i>`).join('');
+    return `<button type="button" class="ws-day ${k === d ? 'active' : ''} ${k === today ? 'today' : ''} ${shifts[0] ? `t-${shiftTone(shifts[0])}` : ''}" data-action="ag-select" data-date="${esc(k)}" aria-pressed="${k === d}" aria-label="${fmtShort(k)}">
+      <small>${WEEKDAYS_MIN[fromKey(k).getDay()]}</small><b>${fromKey(k).getDate()}</b><span class="ws-dots">${dots}</span></button>`;
+  }).join('')}</div>`;
 }
 
 function dayPanel(state, d, items, today) {
@@ -73,6 +87,7 @@ function dayPanel(state, d, items, today) {
       <div><h2>${fmtLong(d)}</h2><span class="muted small">${relDays(d, today)}</span></div>
       <button type="button" class="btn btn-sm btn-primary" data-action="new-menu" data-date="${esc(d)}">${icon('plus', 16)}Adicionar</button>
     </div>
+    ${weekStrip(state, d, today)}
     ${conf.map((c) => `<div class="notice notice-serious">${icon('alert', 16)}<span><strong>${esc(c.reason)}:</strong> ${esc(c.item.title)}. Você está de serviço (${c.shift.start}, ${c.shift.hours}h).</span></div>`).join('')}
     <div class="list">${items.length ? items.map((it) => agendaItemRow(state, it)).join('') : emptyState('calendar', 'Nada neste dia', 'Toque em “Adicionar” para criar algo.')}</div>
   </section>`;
@@ -169,15 +184,21 @@ export default {
       month = monthOf(selected);
       rerender();
     },
-    'ag-select'(btn) {
+    'ag-select'(btn, e) {
       const d = btn.dataset.date;
-      if (d === selected && matchMedia('(max-width: 899px)').matches) {
-        document.querySelector('.day-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        return;
-      }
+      const hit = e?.target?.closest?.('[data-item]'); // tocou num serviço ou item dentro da célula
+      const changed = d !== selected || monthOf(d) !== month;
       selected = d;
       if (monthOf(d) !== month) month = monthOf(d);
-      rerender();
+      if (changed) rerender();
+      if (hit) {
+        actions['agenda-open'](hit); // abre direto a ficha do serviço ou o card do item
+        return;
+      }
+      // Celular: o painel do dia fica abaixo do mês; leva até ele (a faixa da semana não precisa).
+      if (matchMedia('(max-width: 899px)').matches && !btn.classList.contains('ws-day')) {
+        requestAnimationFrame(() => document.querySelector('.day-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      }
     },
     'ag-layer'(btn) {
       const id = btn.dataset.value;
