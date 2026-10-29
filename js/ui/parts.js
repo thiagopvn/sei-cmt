@@ -53,7 +53,7 @@ export function taskPayPill(t, today) {
   return `<span class="pill pill-warning">${icon('coins', 13)}${v} a receber${t.payDate ? ` · ${fmtDM(t.payDate)}` : ''}</span>`;
 }
 
-export function taskRow(state, inst, today, { showArea = true, showDate = true } = {}) {
+export function taskRow(state, inst, today, { showArea = true, showDate = true, timeOnly = false, plan = false } = {}) {
   const t = inst.task;
   const list = checklistFor(t, inst.key);
   const doneCount = list.filter((c) => c.done).length;
@@ -69,7 +69,7 @@ export function taskRow(state, inst, today, { showArea = true, showDate = true }
       <div class="row-main">
         <div class="row-title">${t.priority === 1 && !inst.done ? `<span class="prio-flag" title="Prioridade alta">${icon('flag', 14)}</span>` : ''}${esc(t.title)}</div>
         <div class="row-meta">
-          ${showDate ? dueChip(inst, today) : ''}
+          ${showDate ? dueChip(inst, today) : timeOnly && t.dueTime && !inst.done ? `<span class="pill pill-soft">${icon('clock', 13)}${esc(t.dueTime)}</span>` : ''}
           ${status}
           ${t.recurrence ? `<span class="meta">${icon('repeat', 13)}${esc(describeRule(t.recurrence, t.due))}</span>` : ''}
           ${type && type.id !== 'outro' ? `<span class="meta">${esc(type.name)}</span>` : ''}
@@ -79,6 +79,7 @@ export function taskRow(state, inst, today, { showArea = true, showDate = true }
           ${taskPayPill(t, today)}
         </div>
       </div>
+      ${plan && !inst.done && !t.recurrence ? `<button type="button" class="icon-btn when-btn" data-action="tk-when" data-id="${esc(t.id)}" aria-label="Mudar o dia: ${esc(t.title)}" title="Mudar o dia">${icon('calendar', 18)}</button>` : ''}
       ${inst.done ? '' : `<button type="button" class="icon-btn timer-btn ${running ? 'on' : ''}" data-action="${running ? 'timer-stop' : 'timer-start'}" data-id="${esc(t.id)}"
         aria-label="${running ? 'Parar cronômetro' : 'Iniciar cronômetro'}">${icon(running ? 'stop' : 'timer', 18)}</button>`}
     </div>`;

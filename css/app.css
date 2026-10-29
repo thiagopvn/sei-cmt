@@ -1891,3 +1891,74 @@ body.auth-screen .auth-local { color: var(--text-3); }
   .p-sw.rend { background: #fde047; }
   .p-sw.note { background: #ffedd5; border-left: 0.7mm solid #f97316; }
   .p-gen { margin-left: auto; white-space: nowrap; }
+
+/* ---------- Tarefas: "Meu dia" ---------- */
+/* Faixa de dias: Atrasadas · Hoje · Amanhã · próximos dias · Sem data, cada um com quantas coisas em aberto */
+.dstrip { display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x proximity; padding: 2px 2px 10px; margin: 2px -2px 4px; scrollbar-width: none; }
+.dstrip::-webkit-scrollbar { display: none; }
+.dstrip-item { flex: 0 0 auto; min-width: 58px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 7px 6px 6px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); font: inherit; cursor: pointer; box-shadow: var(--shadow-sm); transition: background .12s, border-color .12s, transform .12s; }
+.dstrip-item:active { transform: scale(.97); }
+.dstrip-item small { font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .03em; color: var(--text-3); line-height: 1.2; white-space: nowrap; }
+.dstrip-item b { font-size: 19px; line-height: 1.2; color: var(--text); display: grid; place-items: center; min-height: 23px; }
+.dstrip-item b .ic { width: 20px; height: 20px; }
+.dstrip-n { min-width: 20px; padding: 0 6px; border-radius: 999px; font-size: 11.5px; font-weight: 800; line-height: 18px; background: var(--surface-3); color: var(--text-2); }
+.dstrip-n.zero { background: transparent; color: var(--text-3); }
+.dstrip-item.is-today small { color: var(--accent-text); }
+.dstrip-item.is-weekend:not(.active) { background: var(--surface-2); }
+.dstrip-item.is-late { border-color: color-mix(in srgb, var(--critical) 45%, var(--border)); }
+.dstrip-item.is-late small, .dstrip-item.is-late b { color: var(--critical-text); }
+.dstrip-item.is-late .dstrip-n { background: var(--critical); color: #fff; }
+.dstrip-item.is-none small, .dstrip-item.is-none b { color: var(--warning-text); }
+.dstrip-item.is-none .dstrip-n:not(.zero) { background: var(--warning); color: #3b2a00; }
+.dstrip-item.active { background: var(--accent); border-color: var(--accent); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent); }
+.dstrip-item.active small, .dstrip-item.active b { color: var(--on-accent); }
+.dstrip-item.active .dstrip-n { background: rgba(255, 255, 255, .25); color: #fff; }
+.dstrip-item.active.is-late { background: var(--critical); border-color: var(--critical); }
+.dstrip-item.active.is-none { background: var(--warning); border-color: var(--warning); }
+.dstrip-item.active.is-none small, .dstrip-item.active.is-none b { color: #3b2a00; }
+.dstrip-item.active.is-none .dstrip-n { background: rgba(0, 0, 0, .12); color: #3b2a00; }
+
+/* Cabeçalho do dia: nome grande, data e progresso */
+.day-hero { display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin: 4px 0 10px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.day-hero.is-today { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--surface)), var(--surface) 70%); border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
+.day-hero.is-late { background: var(--critical-soft); border-color: color-mix(in srgb, var(--critical) 35%, var(--border)); }
+.day-hero.is-none { background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
+.day-hero-main { flex: 1; min-width: 0; }
+.day-hero h2 { margin: 0; font-size: 24px; line-height: 1.15; letter-spacing: -.01em; }
+.day-hero-main > span { display: block; color: var(--text-2); font-size: 13.5px; margin-top: 2px; }
+.day-progress { flex-shrink: 0; width: 92px; text-align: right; }
+.day-progress strong { font-size: 22px; line-height: 1; }
+.day-progress strong small { font-size: 14px; color: var(--text-3); font-weight: 700; }
+.day-progress > span { display: block; font-size: 11.5px; color: var(--text-3); font-weight: 650; margin: 1px 0 4px; }
+.day-progress .meter { margin: 0; height: 6px; }
+
+/* Contexto do dia: serviço e compromissos */
+.day-ctx { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 10px; }
+.ctx-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); font-size: 12.5px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
+.ctx-chip.ctx-duty { background: var(--duty); border-color: var(--duty); color: #fff; }
+
+/* Avisos de planejamento: atrasadas e "sem data" */
+.plan-card { border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface); margin: 0 0 12px; box-shadow: var(--shadow-sm); overflow: hidden; }
+.plan-card.is-late { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-left: 4px solid var(--critical); background: var(--critical-soft); }
+.plan-card.is-none { border-left: 4px solid var(--warning); }
+.plan-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--warning-soft); }
+.plan-ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; background: var(--surface); }
+.plan-card.is-late .plan-ic { color: var(--critical-text); }
+.plan-card.is-none .plan-ic { color: var(--warning-text); }
+.plan-text { flex: 1; min-width: 0; }
+.plan-text strong { display: block; font-size: 14.5px; }
+.plan-text small { display: block; color: var(--text-2); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.plan-inbox .list { border-radius: 0; box-shadow: none; border: 0; }
+
+/* Planejar com um toque (linhas sem data) */
+.plan-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.plan-btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.plan-btn:hover { background: var(--surface-2); }
+.plan-btn:first-child { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); color: var(--accent-text); }
+.when-btn { color: var(--text-3); }
+
+/* Lista "Todas": títulos de dia com a data */
+.section-head h2 small { font-size: 13px; font-weight: 600; color: var(--text-3); margin-left: 2px; }
+.group-none { color: var(--warning-text); }
+.group-later, .group-day { color: var(--text); }
