@@ -33,7 +33,9 @@ Aplicativo (PWA) para organizar a vida pessoal e profissional em um só lugar: *
 - Separadas por **áreas** (Trabalho, Faculdade, Concurso, Família, Pessoal; editáveis) para nada se misturar.
 - Tipos com passo a passo pronto: Documento, SEI, PAD, Solicitação de material, IPM, Sindicância, TCC, Prova… (modelos editáveis).
 - Prazo, prioridade, situação (a fazer, em andamento, aguardando, concluída), nº do processo, avisos X dias antes, valor a receber.
-- Visões: lista por prazo, quadro (arrastar entre colunas), **rotinas** (diárias, semanais, mensais, anuais, com sequência e histórico) e **tempo** (cronômetro/Pomodoro por tarefa, com relatório).
+- **Meu dia** (abre por padrão): faixa com **Atrasadas · Hoje · Amanhã · próximos dias · Sem data**, cada um com quantas coisas em aberto; toque para ver só aquele dia. O dia mostra o nome grande (“Hoje”, “Amanhã”, “Sexta-feira”), o progresso (feitas/total), se você está de serviço e os compromissos do dia, e as seções **Para fazer**, **Rotinas** e **Concluídas**.
+- **Nada some lá embaixo:** o que é escrito no campo rápido sem data entra no dia que está aberto (Hoje, por padrão); as tarefas sem data ficam numa caixa em destaque com botões **Hoje / Amanhã / Outro dia**; as atrasadas aparecem num aviso com **“Para hoje”** (traz todas de uma vez); e cada tarefa tem um botão de calendário para mudar o dia (amanhã, fim de semana, próxima semana, escolher o dia, tirar a data), com desfazer.
+- Visões: **Lista** agrupada por data de verdade (Atrasadas, Hoje, Sem data, Amanhã, cada dia da semana com a data, “A partir de…”), quadro (arrastar entre colunas), **rotinas** (diárias, semanais, mensais, anuais, com sequência e histórico) e **tempo** (cronômetro/Pomodoro por tarefa, com relatório).
 
 **Agenda**
 - Mês com camadas (serviços, prazos, compromissos, rotinas, finanças) e filtro por área; painel do dia; lista dos próximos 45 dias (tarefas sem prazo aparecem ao final, em “Sem data”).

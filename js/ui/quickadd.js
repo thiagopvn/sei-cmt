@@ -37,13 +37,19 @@ function previewHtml(p, state) {
   return parts.map((x) => `<span class="meta">${x}</span>`).join('');
 }
 
-export function bindQuickAdd(root, { area = null } = {}) {
+/** `due`: data usada quando o texto não traz data (ex.: o dia aberto em "Meu dia"). */
+export function bindQuickAdd(root, { area = null, due = null } = {}) {
   const form = root.querySelector('[data-quick]');
   if (!form) return;
   const inp = form.querySelector('input');
   const prev = form.querySelector('.quick-preview');
   const state = () => store.get();
-  const parse = () => (inp.value.trim() ? parseQuick(inp.value, todayKey(), state()) : null);
+  const parse = () => {
+    if (!inp.value.trim()) return null;
+    const p = parseQuick(inp.value, todayKey(), state());
+    if (!p.due && !p.recurrence && due) p.due = due;
+    return p;
+  };
   const update = () => { prev.innerHTML = previewHtml(parse(), state()); };
   inp.addEventListener('input', update);
   inp.addEventListener('focus', update);
@@ -82,7 +88,8 @@ export function bindQuickAdd(root, { area = null } = {}) {
         doneAt: null,
       });
     });
-    toast(`${p.recurrence ? 'Rotina' : 'Tarefa'} criada: ${p.title}`, {
+    const when = p.recurrence ? '' : p.due ? ` · ${p.due === todayKey() ? 'hoje' : fmtShort(p.due)}` : ' · sem data';
+    toast(`${p.recurrence ? 'Rotina' : 'Tarefa'} criada: ${p.title}${when}`, {
       action: { label: 'Detalhes', onClick: () => openTaskForm({ task: store.get().tasks.find((t) => t.id === id), key: p.recurrence ? p.due : 'once' }) },
     });
   });

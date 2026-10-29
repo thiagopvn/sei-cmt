@@ -86,6 +86,91 @@ export function groupInstances(instances, today) {
   return GROUPS.map(([k, label]) => ({ key: k, label, items: map.get(k) })).filter((g) => g.items.length);
 }
 
+// ---------- Planejamento por dia ("Meu dia") ----------
+
+/** Data local (YYYY-MM-DD) de um instante ISO — doneAt é gravado em UTC. */
+const localDay = (iso) => (iso ? toKey(new Date(iso)) : null);
+
+/** Tarefas em aberto sem data: a "caixa de entrada" que precisa ser planejada. */
+export function undatedOpen(tasks) {
+  return tasks.filter((t) => !t.recurrence && !t.due && t.status !== 'done')
+    .sort((a, b) => (a.priority || 2) - (b.priority || 2) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+}
+
+/** Tarefas (não rotinas) com prazo vencido e ainda abertas, mais antigas primeiro. */
+export function overdueOpen(tasks, today) {
+  return tasks.filter((t) => !t.recurrence && t.due && t.due < today && t.status !== 'done')
+    .map((t) => ({ task: t, key: 'once', date: t.due, done: false }))
+    .sort(compareInstances);
+}
+
+/**
+ * O que é do dia D: { routines, open, done }.
+ * - routines: ocorrências das rotinas em D (hoje inclui a pendente de dias anteriores, que ainda vale);
+ * - open: tarefas com prazo em D ainda abertas (por horário e prioridade);
+ * - done: concluídas com prazo em D ou, se D é hoje, concluídas hoje (mesmo sem data).
+ */
+export function dayPlan(tasks, D, today) {
+  const routines = [];
+  const open = [];
+  const done = [];
+  for (const t of tasks) {
+    if (t.recurrence) {
+      let inst = null;
+      if (D === today) {
+        const a = activeInstance(t, today);
+        if (a && a.date <= today) inst = a;
+      } else if (D > today) {
+        inst = instancesInRange(t, D, D)[0] || null;
+      }
+      if (inst) routines.push(inst);
+      continue;
+    }
+    if (t.status === 'done') {
+      if (t.due === D || (D === today && localDay(t.doneAt) === today)) done.push({ task: t, key: 'once', date: t.due || null, done: true });
+    } else if (t.due === D) {
+      open.push({ task: t, key: 'once', date: D, done: false });
+    }
+  }
+  routines.sort(compareInstances);
+  open.sort(compareInstances);
+  done.sort((a, b) => String(b.task.doneAt || '').localeCompare(String(a.task.doneAt || '')));
+  return { routines, open, done };
+}
+
+/** Quantas coisas em aberto há em cada dia (tarefas + rotinas pendentes). */
+export function openCount(tasks, D, today) {
+  const p = dayPlan(tasks, D, today);
+  return p.open.length + p.routines.filter((i) => !i.done).length;
+}
+
+/**
+ * Lista completa agrupada por data de verdade (nada de "Esta semana" / "Mais adiante" vagos):
+ * Atrasadas · Hoje · Sem data (a planejar) · Amanhã · cada um dos próximos 5 dias · A partir de dd/mm · Concluídas.
+ * Cada grupo: { key, date, items }.
+ */
+export function groupByDay(instances, today, days = 7) {
+  const limit = addDays(today, days - 1);
+  const map = new Map();
+  const put = (key, date, inst) => {
+    if (!map.has(key)) map.set(key, { key, date, items: [] });
+    map.get(key).items.push(inst);
+  };
+  for (const inst of instances) {
+    if (inst.done) put('done', null, inst);
+    else if (!inst.date) put('none', null, inst);
+    else if (inst.date < today) put('overdue', null, inst);
+    else if (inst.date <= limit) put(inst.date, inst.date, inst);
+    else put('later', addDays(limit, 1), inst);
+  }
+  for (const g of map.values()) g.items.sort(compareInstances);
+  if (map.has('done')) map.get('done').items.sort((a, b) => String(b.task.doneAt || b.date || '').localeCompare(String(a.task.doneAt || a.date || '')));
+  const order = ['overdue', today, 'none'];
+  for (let i = 1; i < days; i++) order.push(addDays(today, i));
+  order.push('later', 'done');
+  return order.filter((k) => map.has(k)).map((k) => map.get(k));
+}
+
 export function checklistFor(task, key) {
   const list = task.checklist || [];
   if (!task.recurrence) return list;

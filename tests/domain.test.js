@@ -157,3 +157,32 @@ test('conflitos e radar', () => {
   const map = collectRange(s, T, addDays(T, 6));
   assert.equal(map.get('2026-10-07').length, 3);
 });
+
+test('Meu dia: hoje junta prazos do dia, rotinas e concluídas hoje; sem data e atrasadas à parte', async () => {
+  const { dayPlan, undatedOpen, overdueOpen, openCount, groupByDay } = await import('../js/domain/tasks.js');
+  const T = '2026-10-29';
+  const doneTodayIso = new Date(2026, 9, 29, 22, 30).toISOString(); // 22h30 local = dia seguinte em UTC
+  const tasks = [
+    { id: 'a', title: 'Prazo de hoje', due: T, dueTime: '14:00', status: 'todo', priority: 2 },
+    { id: 'b', title: 'Urgente de hoje', due: T, status: 'todo', priority: 1 },
+    { id: 'c', title: 'Amanhã', due: '2026-10-30', status: 'todo', priority: 2 },
+    { id: 'd', title: 'Sem data', due: '', status: 'todo', priority: 2, createdAt: '2026-10-28T10:00:00Z' },
+    { id: 'e', title: 'Sem data urgente', due: null, status: 'doing', priority: 1, createdAt: '2026-10-29T10:00:00Z' },
+    { id: 'f', title: 'Atrasada', due: '2026-10-25', status: 'todo', priority: 2 },
+    { id: 'g', title: 'Feita hoje sem data', due: '', status: 'done', doneAt: doneTodayIso, priority: 2 },
+    { id: 'r', title: 'Estudar', due: '2026-10-01', dueTime: '20:00', recurrence: { freq: 'daily' }, occ: {}, status: 'todo', priority: 2 },
+  ];
+  const p = dayPlan(tasks, T, T);
+  assert.deepEqual(p.open.map((i) => i.task.id), ['a', 'b']); // por horário: 14:00 antes de "sem hora"
+  assert.deepEqual(p.routines.map((i) => i.task.id), ['r']);
+  assert.deepEqual(p.done.map((i) => i.task.id), ['g']); // concluída hoje (horário local), mesmo sem data
+  assert.deepEqual(undatedOpen(tasks).map((t) => t.id), ['e', 'd']); // prioridade alta primeiro
+  assert.deepEqual(overdueOpen(tasks, T).map((i) => i.task.id), ['f']);
+  assert.equal(openCount(tasks, T, T), 3);
+  assert.equal(openCount(tasks, '2026-10-30', T), 2); // prazo + rotina do dia
+  // Lista completa: grupos por data real, com "Sem data" logo depois de Hoje
+  const insts = tasks.filter((t) => !t.recurrence).map((t) => ({ task: t, key: 'once', date: t.due || null, done: t.status === 'done' }));
+  insts.push({ task: { id: 'z', title: 'Longe', priority: 2 }, key: 'once', date: '2026-11-20', done: false });
+  assert.deepEqual(groupByDay(insts, T).map((g) => g.key), ['overdue', T, 'none', '2026-10-30', 'later', 'done']);
+  assert.equal(groupByDay(insts, T).find((g) => g.key === 'later').date, '2026-11-05');
+});
